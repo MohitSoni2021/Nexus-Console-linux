@@ -102,6 +102,9 @@ impl PtyManager {
         let mut cmd = CommandBuilder::new(&program);
         cmd.args(&args);
         cmd.env("TERM", "xterm-256color");
+        if let Ok(home) = std::env::var("HOME") {
+            cmd.cwd(home);
+        }
 
         let child = pair
             .slave
@@ -231,19 +234,99 @@ fn lock(
 
 /// Server-side allowlist — JS passes a formula + kind, never a program. Resolves
 /// the client binary (or a login shell) / the `tail -f` log command.
+#[cfg(target_os = "linux")]
+fn validate_service_or_formula(name: &str) -> AppResult<()> {
+    if !name.is_empty()
+        && name.len() <= 256
+        && name.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '@' | '.' | '_' | '+' | '-' | ':' | '\\' | '/')
+        })
+    {
+        Ok(())
+    } else {
+        Err(AppError::InvalidName(format!(
+            "invalid service name: {name}"
+        )))
+    }
+}
+
+fn find_bin(name: &str, prefix: &str) -> Option<String> {
+    let p = format!("{prefix}/bin/{name}");
+    if std::path::Path::new(&p).exists() {
+        return Some(p);
+    }
+    if let Ok(paths) = std::env::var("PATH") {
+        for dir in paths.split(':') {
+            let candidate = std::path::Path::new(dir).join(name);
+            if candidate.is_file() {
+                return Some(candidate.to_string_lossy().into_owned());
+            }
+        }
+    }
+    None
+}
+
 fn resolve_command(
     formula: &str,
     kind: &str,
     ctx: &AppContext,
 ) -> AppResult<(String, Vec<String>)> {
+    #[cfg(target_os = "linux")]
+    validate_service_or_formula(formula)?;
+    #[cfg(not(target_os = "linux"))]
     validate::validate_formula(formula)?;
+
     // brew installs a tap formula under its bare name (opt/mongodb-community@7.0),
-    // so every path and client lookup below drops the `user/repo/` prefix.
+    // so every path and client lookup drops the `user/repo/` prefix.
     let formula = validate::bare_formula(formula);
     let prefix = ctx.brew_prefix.as_deref().unwrap_or("/opt/homebrew");
-    let base = formula.split('@').next().unwrap_or(formula);
-    let bin = |name: &str| format!("{prefix}/bin/{name}");
+    let base = formula
+        .strip_suffix(".service")
+        .unwrap_or(formula)
+        .split('@')
+        .next()
+        .unwrap_or(formula);
 
+    #[cfg(target_os = "linux")]
+    if kind == "logs" {
+        let mut log_path: Option<String> = None;
+        if let Some(prefix) = ctx.brew_prefix.as_deref() {
+            let plist_file = format!("{prefix}/opt/{formula}/homebrew.mxcl.{formula}.plist");
+            if std::path::Path::new(&plist_file).exists() {
+                if let Ok(content) = std::fs::read_to_string(&plist_file) {
+                    if let Some(log) = plist::log_path_from_plist(&content) {
+                        if std::path::Path::new(&log).exists() {
+                            log_path = Some(log);
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(log) = log_path {
+            return Ok(("tail".into(), vec!["-f".into(), log]));
+        }
+
+        let unit = if formula.ends_with(".service") {
+            formula.to_string()
+        } else {
+            format!("{formula}.service")
+        };
+        return Ok((
+            "journalctl".into(),
+            vec![
+                "--user".into(),
+                "-u".into(),
+                unit,
+                "-f".into(),
+                "-n".into(),
+                "100".into(),
+                "--no-pager".into(),
+            ],
+        ));
+    }
+
+    #[cfg(not(target_os = "linux"))]
     if kind == "logs" {
         let plist_file = format!("{prefix}/opt/{formula}/homebrew.mxcl.{formula}.plist");
         let log = std::fs::read_to_string(&plist_file)
@@ -254,16 +337,20 @@ fn resolve_command(
     }
 
     let client = match base {
-        "redis" | "valkey" => Some((bin("redis-cli"), vec![])),
-        // psql defaults to a DB named after the OS user, which usually doesn't
-        // exist — connect to the always-present `postgres` database instead.
-        "postgresql" | "postgres" => Some((bin("psql"), vec!["-d".into(), "postgres".into()])),
-        "mysql" | "mariadb" | "percona-server" => Some((bin("mysql"), vec![])),
-        "mongodb" | "mongodb-community" => Some((bin("mongosh"), vec![])),
+        "redis" | "valkey" => find_bin("redis-cli", prefix).map(|p| (p, vec![])),
+        "postgresql" | "postgres" => {
+            find_bin("psql", prefix).map(|p| (p, vec!["-d".into(), "postgres".into()]))
+        }
+        "mysql" | "mariadb" | "percona-server" => find_bin("mysql", prefix)
+            .or_else(|| find_bin("mariadb", prefix))
+            .map(|p| (p, vec![])),
+        "mongodb" | "mongodb-community" => find_bin("mongosh", prefix)
+            .or_else(|| find_bin("mongo", prefix))
+            .map(|p| (p, vec![])),
         _ => None,
     };
     match client {
-        Some((path, args)) if std::path::Path::new(&path).exists() => Ok((path, args)),
+        Some((path, args)) => Ok((path, args)),
         _ => {
             let default_shell = if cfg!(target_os = "macos") {
                 "/bin/zsh"
@@ -276,9 +363,6 @@ fn resolve_command(
     }
 }
 
-// All four are `async` so Tauri runs them off the main thread — a sync command
-// runs ON the main thread, so an openpty/spawn or a write into a full PTY buffer
-// would stall the UI (same pattern as the brew commands in commands/).
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn pty_open(
@@ -359,5 +443,44 @@ mod tests {
         let out = String::from_utf8_lossy(&buf[..n]).into_owned();
         let _ = child.wait();
         assert!(out.contains("nexus-pty-ok"), "got: {out:?}");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn validates_systemd_and_formula_names() {
+        assert!(validate_service_or_formula("create-1tb-link").is_ok());
+        assert!(validate_service_or_formula("at-spi-dbus-bus").is_ok());
+        assert!(validate_service_or_formula("dbus-:1.19-org.a11y.atspi.Registry@0").is_ok());
+        assert!(validate_service_or_formula("dbus-:1.2-org.freedesktop.portal.IBus@0").is_ok());
+        assert!(validate_service_or_formula("redis").is_ok());
+        assert!(validate_service_or_formula("").is_err());
+        assert!(validate_service_or_formula("bad;rm -rf /").is_err());
+        assert!(validate_service_or_formula("has space").is_err());
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn resolves_systemd_logs_command() {
+        let ctx = AppContext {
+            brew_bin: None,
+            brew_prefix: None,
+            brew_version: None,
+            platform: "linux".into(),
+            arch: "x86_64".into(),
+        };
+        let (cmd, args) = resolve_command("create-1tb-link", "logs", &ctx).unwrap();
+        assert_eq!(cmd, "journalctl");
+        assert_eq!(
+            args,
+            vec![
+                "--user",
+                "-u",
+                "create-1tb-link.service",
+                "-f",
+                "-n",
+                "100",
+                "--no-pager"
+            ]
+        );
     }
 }

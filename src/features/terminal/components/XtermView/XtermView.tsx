@@ -60,7 +60,7 @@ export const XtermView = ({
     fitRef.current = fit;
 
     const dataSub = term.onData((d) => void writePty(session.id, d));
-    void openPty(
+    openPty(
       {
         id: session.id,
         formula: session.formula,
@@ -72,7 +72,12 @@ export const XtermView = ({
         if (e.type === 'output') term.write(e.data);
         else term.write('\r\n\x1b[90m[process exited]\x1b[0m\r\n');
       },
-    );
+    ).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      term.write(
+        `\r\n\x1b[31mFailed to start terminal: ${msg}\x1b[0m\r\n\r\n\x1b[90m[process exited]\x1b[0m\r\n`,
+      );
+    });
 
     return () => {
       dataSub.dispose();

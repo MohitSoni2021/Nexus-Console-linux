@@ -16,38 +16,53 @@ export const TerminalDrawer = () => {
   if (sessions.length === 0) return null;
 
   return (
-    <div
-      className={cn(
-        'flex h-72 shrink-0 flex-col border-t border-border bg-paper',
-        !drawerOpen && 'hidden',
-      )}
-    >
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <TerminalSquare className="h-4 w-4 shrink-0 text-fg-muted" />
-          <TerminalTabs />
-        </div>
-        <button
-          type="button"
-          aria-label="Hide terminal"
-          onClick={() => dispatch(setDrawerOpen(false))}
-          className="shrink-0 rounded-md p-1 text-fg-muted hover:bg-list hover:text-fg"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      {/* All sessions stay mounted (PTYs persist) — inactive ones hidden via visibility. */}
-      <div className="relative min-h-0 flex-1">
-        {sessions.map((s) => (
-          <div
-            key={s.id}
-            className="absolute inset-0 p-2"
-            style={{ visibility: s.id === activeId ? 'visible' : 'hidden' }}
+    <>
+      {!drawerOpen && (
+        <div className="flex items-center justify-between border-t border-border bg-paper px-3 py-1">
+          <button
+            type="button"
+            onClick={() => dispatch(setDrawerOpen(true))}
+            className="flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-fg-muted transition-colors hover:bg-list hover:text-fg"
+            aria-label="Show terminal"
           >
-            <XtermView session={s} active={s.id === activeId} visible={drawerOpen} />
+            <TerminalSquare className="h-3.5 w-3.5" />
+            <span>Terminal ({sessions.length})</span>
+          </button>
+        </div>
+      )}
+      <div
+        className={cn(
+          'flex h-72 shrink-0 flex-col border-t border-border bg-paper',
+          !drawerOpen && 'hidden',
+        )}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <TerminalSquare className="h-4 w-4 shrink-0 text-fg-muted" />
+            <TerminalTabs />
           </div>
-        ))}
+          <button
+            type="button"
+            aria-label="Hide terminal"
+            onClick={() => dispatch(setDrawerOpen(false))}
+            className="shrink-0 rounded-md p-1 text-fg-muted hover:bg-list hover:text-fg"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* All sessions stay mounted (PTYs persist) — inactive ones hidden via visibility. */}
+        <div className="relative min-h-0 flex-1">
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              className="absolute inset-0 p-2"
+              style={{ visibility: s.id === activeId ? 'visible' : 'hidden' }}
+            >
+              <XtermView session={s} active={s.id === activeId} visible={drawerOpen} />
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
