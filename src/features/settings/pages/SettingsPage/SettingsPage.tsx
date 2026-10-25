@@ -3,6 +3,7 @@ import { setTheme, setLayout, setEnabledModules } from '@/shared/state/settingsS
 import { useEnabledModules } from '@/shared/modules';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
 import { FeaturePicker } from '@/features/settings/components/FeaturePicker';
+import { FontPicker } from '@/features/settings/components/FontPicker';
 import { HomebrewStatusCard } from '@/features/settings/components/HomebrewStatusCard';
 import { ManagedServicesEditor } from '@/features/settings/components/ManagedServicesEditor';
 import { THEME_OPTIONS, LAYOUT_OPTIONS } from './SettingsPage.config';
@@ -17,7 +18,9 @@ export const SettingsPage = () => {
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-6 py-4">
         <h1 className="text-lg font-semibold text-fg">Settings</h1>
-        <p className="text-sm text-fg-muted">Features, theme, Homebrew &amp; managed services</p>
+        <p className="text-sm text-fg-muted">
+          Features, appearance, typography &amp; managed services
+        </p>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -71,6 +74,8 @@ export const SettingsPage = () => {
           </section>
 
           <HomebrewStatusCard />
+
+          <FontPicker />
 
           <ManagedServicesEditor />
         </div>

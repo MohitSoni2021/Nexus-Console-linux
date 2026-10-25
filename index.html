@@ -10,6 +10,22 @@
       document.documentElement.dataset.theme =
         localStorage.getItem('nexus-theme') ??
         (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      try {
+        const u = localStorage.getItem('nexus-ui-font');
+        if (u && u !== 'default') {
+          document.documentElement.style.setProperty(
+            '--font-sans',
+            `"${u}", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
+          );
+        }
+        const m = localStorage.getItem('nexus-mono-font');
+        if (m && m !== 'default') {
+          document.documentElement.style.setProperty(
+            '--font-mono',
+            `"${m}", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`,
+          );
+        }
+      } catch {}
     </script>
   </head>
   <body>

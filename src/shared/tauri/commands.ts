@@ -3,6 +3,7 @@ export const CMD = {
   CONFIRM_BULK: 'confirm_bulk',
   TRUST_TAP: 'trust_tap',
   GET_APP_CONTEXT: 'get_app_context',
+  GET_SYSTEM_FONTS: 'get_system_fonts',
   LIST_SERVICES: 'list_services',
   START_SERVICE: 'start_service',
   STOP_SERVICE: 'stop_service',

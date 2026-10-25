@@ -10,6 +10,7 @@
      the system font (San Francisco) for native feel instead of a web font that
      was declared but never actually bundled/loaded. */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
   /* Surfaces / ink (light = default) */
   --color-canvas: #f8fafc;

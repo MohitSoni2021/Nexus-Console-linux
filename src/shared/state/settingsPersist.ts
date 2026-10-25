@@ -11,6 +11,9 @@ import {
   setAutoArchiveEnabled,
   setAutoArchiveCutoffDays,
   setAutoVacuumEnabled,
+  setUiFont,
+  setMonoFont,
+  resetFonts,
   type PersistedSettings,
 } from './settingsSlice';
 
@@ -44,6 +47,9 @@ settingsListener.startListening({
     setAutoArchiveEnabled,
     setAutoArchiveCutoffDays,
     setAutoVacuumEnabled,
+    setUiFont,
+    setMonoFont,
+    resetFonts,
   ),
   effect: async (_action, api) => {
     const {
@@ -56,6 +62,8 @@ settingsListener.startListening({
       autoArchiveEnabled,
       autoArchiveCutoffDays,
       autoVacuumEnabled,
+      uiFont,
+      monoFont,
     } = (api.getState() as RootState).settings;
     const store = await getStore();
     await store.set(KEY, {
@@ -68,6 +76,8 @@ settingsListener.startListening({
       autoArchiveEnabled,
       autoArchiveCutoffDays,
       autoVacuumEnabled,
+      uiFont,
+      monoFont,
     });
     await store.save();
   },

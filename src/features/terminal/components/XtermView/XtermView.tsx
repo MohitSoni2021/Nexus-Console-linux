@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { openPty, writePty, resizePty, killPty, type PtyEvent } from '@/shared/tauri';
 import { useResolvedTheme } from '@/shared/state/useResolvedTheme';
+import { useAppSelector } from '@/shared/state/hooks';
 import { xtermTheme } from '@/features/terminal/utils/xtermTheme';
 import type { TerminalSession } from '@/shared/state/terminalsSlice';
 
@@ -22,6 +23,19 @@ export const XtermView = ({
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const theme = useResolvedTheme();
+  const monoFont = useAppSelector((s) => s.settings.monoFont);
+  const monoFontRef = useRef(monoFont);
+  monoFontRef.current = monoFont;
+
+  // Update terminal font dynamically when user changes settings
+  useEffect(() => {
+    if (!termRef.current) return;
+    termRef.current.options.fontFamily =
+      monoFont && monoFont !== 'default'
+        ? `"${monoFont}", ui-monospace, SFMono-Regular, Menlo, monospace`
+        : 'ui-monospace, SFMono-Regular, Menlo, monospace';
+    fitRef.current?.fit();
+  }, [monoFont]);
 
   // Create the terminal + PTY once per session; kill the PTY on unmount.
   useEffect(() => {
@@ -30,7 +44,10 @@ export const XtermView = ({
 
     const term = new Terminal({
       fontSize: 12,
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFamily:
+        monoFontRef.current && monoFontRef.current !== 'default'
+          ? `"${monoFontRef.current}", ui-monospace, SFMono-Regular, Menlo, monospace`
+          : 'ui-monospace, SFMono-Regular, Menlo, monospace',
       scrollback: 5000,
       cursorBlink: true,
       theme: xtermTheme(),

@@ -20,6 +20,8 @@ interface SettingsState {
   autoArchiveEnabled: boolean;
   autoArchiveCutoffDays: number;
   autoVacuumEnabled: boolean;
+  uiFont: string;
+  monoFont: string;
   /** false until persisted settings are loaded from tauri-store on boot. */
   hydrated: boolean;
 }
@@ -36,6 +38,8 @@ export type PersistedSettings = Pick<
   | 'autoArchiveEnabled'
   | 'autoArchiveCutoffDays'
   | 'autoVacuumEnabled'
+  | 'uiFont'
+  | 'monoFont'
 >;
 
 const initialState: SettingsState = {
@@ -48,6 +52,8 @@ const initialState: SettingsState = {
   autoArchiveEnabled: false,
   autoArchiveCutoffDays: 30,
   autoVacuumEnabled: false,
+  uiFont: 'default',
+  monoFont: 'default',
   hydrated: false,
 };
 
@@ -69,6 +75,16 @@ const settingsSlice = createSlice({
     },
     setCardOrder(state, action: PayloadAction<string[]>) {
       state.cardOrder = action.payload;
+    },
+    setUiFont(state, action: PayloadAction<string>) {
+      state.uiFont = action.payload;
+    },
+    setMonoFont(state, action: PayloadAction<string>) {
+      state.monoFont = action.payload;
+    },
+    resetFonts(state) {
+      state.uiFont = 'default';
+      state.monoFont = 'default';
     },
     /** At least one feature module must stay on — an app with no feature tabs is
      * a brick, so the empty state is unrepresentable in the store rather than
@@ -100,6 +116,9 @@ export const {
   setPollInterval,
   setQuitBehavior,
   setCardOrder,
+  setUiFont,
+  setMonoFont,
+  resetFonts,
   setEnabledModules,
   setAutoArchiveEnabled,
   setAutoArchiveCutoffDays,

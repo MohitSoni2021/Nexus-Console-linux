@@ -18,9 +18,51 @@ const apply = (mode: 'light' | 'dark') => {
   });
 };
 
-/** Resolves settings.theme (incl. `system` via matchMedia) → data-theme on <html>. */
 export const ThemeProvider = ({ children }: PropsWithChildren) => {
   const theme = useAppSelector((s) => s.settings.theme);
+  const uiFont = useAppSelector((s) => s.settings.uiFont);
+  const monoFont = useAppSelector((s) => s.settings.monoFont);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (uiFont && uiFont !== 'default') {
+      root.style.setProperty(
+        '--font-sans',
+        `"${uiFont}", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`,
+      );
+      try {
+        localStorage.setItem('nexus-ui-font', uiFont);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      root.style.removeProperty('--font-sans');
+      try {
+        localStorage.removeItem('nexus-ui-font');
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (monoFont && monoFont !== 'default') {
+      root.style.setProperty(
+        '--font-mono',
+        `"${monoFont}", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`,
+      );
+      try {
+        localStorage.setItem('nexus-mono-font', monoFont);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      root.style.removeProperty('--font-mono');
+      try {
+        localStorage.removeItem('nexus-mono-font');
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [uiFont, monoFont]);
 
   useEffect(() => {
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
