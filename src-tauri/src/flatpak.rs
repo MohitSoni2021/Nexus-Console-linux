@@ -54,6 +54,12 @@ pub fn list_packages_flatpak() -> AppResult<Vec<PackageDto>> {
 }
 
 pub fn packages_outdated_flatpak() -> AppResult<Vec<OutdatedDto>> {
+    let installed: std::collections::HashMap<String, String> = list_packages_flatpak()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| (p.name, p.version))
+        .collect();
+
     let out = Command::new("flatpak")
         .args(["remote-ls", "--updates", "--columns=application,version"])
         .output();
@@ -79,6 +85,18 @@ pub fn packages_outdated_flatpak() -> AppResult<Vec<OutdatedDto>> {
                 .map(|v| v.trim())
                 .filter(|v| !v.is_empty())
                 .map(String::from);
+
+            // Filter out false-positives (e.g. Fedora OCI commit hash differences
+            // where the installed package is already at the latest release).
+            if let Some(installed_v) = installed.get(&app_id) {
+                if let Some(ref new_v) = version {
+                    if new_v == installed_v {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
 
             outdated.push(OutdatedDto {
                 name: app_id,
@@ -138,7 +156,11 @@ pub fn package_info_flatpak(name: &str) -> AppResult<PackageInfo> {
         dependencies.push(format!("Sdk: {s}"));
     }
 
-    let homepage = origin.map(|_| format!("https://flathub.org/apps/{name}"));
+    let homepage = if origin.as_deref() == Some("flathub") {
+        Some(format!("https://flathub.org/apps/{name}"))
+    } else {
+        None
+    };
 
     Ok(PackageInfo {
         name: name.to_string(),
