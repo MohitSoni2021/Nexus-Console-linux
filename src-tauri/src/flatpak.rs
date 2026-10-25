@@ -3,9 +3,6 @@ use crate::error::{AppError, AppResult};
 use std::process::Command;
 
 pub fn is_flatpak(name: &str) -> bool {
-    if !name.contains('.') {
-        return false;
-    }
     Command::new("flatpak")
         .args(["info", name])
         .output()
@@ -155,49 +152,120 @@ pub fn package_info_flatpak(name: &str) -> AppResult<PackageInfo> {
     })
 }
 
+fn format_flatpak_err(out: &std::process::Output) -> String {
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    if !stderr.trim().is_empty() {
+        stderr.into_owned()
+    } else if !stdout.trim().is_empty() {
+        stdout.into_owned()
+    } else {
+        format!(
+            "flatpak process exited with code {}",
+            out.status.code().unwrap_or(-1)
+        )
+    }
+}
+
 pub fn upgrade_package_flatpak(name: &str) -> AppResult<()> {
     let out = Command::new("flatpak")
-        .args(["update", "-y", "--noninteractive", name])
+        .args(["update", "-y", "--noninteractive", "--force-remove", name])
         .output()
         .map_err(|e| AppError::Shell(format!("flatpak update failed: {e}")))?;
 
     if out.status.success() {
-        Ok(())
-    } else {
-        Err(AppError::Shell(
-            String::from_utf8_lossy(&out.stderr).into_owned(),
-        ))
+        return Ok(());
     }
+
+    let err = format_flatpak_err(&out);
+    if err.contains("not authorized") || err.contains("Permission denied") {
+        let pk_out = Command::new("pkexec")
+            .args([
+                "flatpak",
+                "update",
+                "-y",
+                "--noninteractive",
+                "--force-remove",
+                name,
+            ])
+            .output()
+            .map_err(|e| AppError::Shell(format!("pkexec flatpak update failed: {e}")))?;
+        if pk_out.status.success() {
+            return Ok(());
+        }
+        return Err(AppError::Shell(format_flatpak_err(&pk_out)));
+    }
+
+    Err(AppError::Shell(err))
 }
 
 pub fn upgrade_all_flatpak() -> AppResult<()> {
     let out = Command::new("flatpak")
-        .args(["update", "-y", "--noninteractive"])
+        .args(["update", "-y", "--noninteractive", "--force-remove"])
         .output()
         .map_err(|e| AppError::Shell(format!("flatpak update failed: {e}")))?;
 
     if out.status.success() {
-        Ok(())
-    } else {
-        Err(AppError::Shell(
-            String::from_utf8_lossy(&out.stderr).into_owned(),
-        ))
+        return Ok(());
     }
+
+    let err = format_flatpak_err(&out);
+    if err.contains("not authorized") || err.contains("Permission denied") {
+        let pk_out = Command::new("pkexec")
+            .args([
+                "flatpak",
+                "update",
+                "-y",
+                "--noninteractive",
+                "--force-remove",
+            ])
+            .output()
+            .map_err(|e| AppError::Shell(format!("pkexec flatpak update failed: {e}")))?;
+        if pk_out.status.success() {
+            return Ok(());
+        }
+        return Err(AppError::Shell(format_flatpak_err(&pk_out)));
+    }
+
+    Err(AppError::Shell(err))
 }
 
 pub fn uninstall_package_flatpak(name: &str) -> AppResult<()> {
     let out = Command::new("flatpak")
-        .args(["uninstall", "-y", "--noninteractive", name])
+        .args([
+            "uninstall",
+            "-y",
+            "--noninteractive",
+            "--force-remove",
+            name,
+        ])
         .output()
         .map_err(|e| AppError::Shell(format!("flatpak uninstall failed: {e}")))?;
 
     if out.status.success() {
-        Ok(())
-    } else {
-        Err(AppError::Shell(
-            String::from_utf8_lossy(&out.stderr).into_owned(),
-        ))
+        return Ok(());
     }
+
+    let err = format_flatpak_err(&out);
+    if err.contains("not authorized") || err.contains("Permission denied") {
+        let pk_out = Command::new("pkexec")
+            .args([
+                "flatpak",
+                "uninstall",
+                "-y",
+                "--noninteractive",
+                "--force-remove",
+                name,
+            ])
+            .output()
+            .map_err(|e| AppError::Shell(format!("pkexec flatpak uninstall failed: {e}")))?;
+        if pk_out.status.success() {
+            return Ok(());
+        }
+        return Err(AppError::Shell(format_flatpak_err(&pk_out)));
+    }
+
+    Err(AppError::Shell(err))
 }
 
 pub fn search_packages_flatpak(query: &str) -> AppResult<Vec<String>> {
