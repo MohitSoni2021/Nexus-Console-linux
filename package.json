@@ -10,6 +10,7 @@
   },
   "scripts": {
     "setup": "sh scripts/setup.sh",
+    "setup:fedora": "sh scripts/setup-fedora.sh",
     "setup:check": "sh scripts/setup.sh --check",
     "start": "tauri dev",
     "release": "tauri build",

@@ -1,4 +1,4 @@
-export type PackageFilter = 'all' | 'formula' | 'cask' | 'outdated';
+export type PackageFilter = 'all' | 'formula' | 'cask' | 'rpm' | 'outdated';
 
 export interface PackagesToolbarProps {
   query: string;

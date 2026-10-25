@@ -79,19 +79,36 @@ pub async fn kill_process(pid: u32, force: bool, sudo: bool) -> AppResult<()> {
     if sudo {
         // Whitelisted admin command — only a fixed signal name + a validated u32 pid
         // are interpolated, so there's no injection surface. Review as security code.
-        let script = format!(
-            "do shell script \"/bin/kill -{sig_name} {pid}\" with administrator privileges"
-        );
-        let out = Command::new("osascript")
-            .args(["-e", &script])
-            .output()
-            .map_err(|e| AppError::Shell(format!("osascript: {e}")))?;
-        if out.status.success() {
-            Ok(())
-        } else {
-            Err(AppError::Shell(
-                String::from_utf8_lossy(&out.stderr).trim().to_string(),
-            ))
+        #[cfg(target_os = "macos")]
+        {
+            let script = format!(
+                "do shell script \"/bin/kill -{sig_name} {pid}\" with administrator privileges"
+            );
+            let out = Command::new("osascript")
+                .args(["-e", &script])
+                .output()
+                .map_err(|e| AppError::Shell(format!("osascript: {e}")))?;
+            if out.status.success() {
+                Ok(())
+            } else {
+                Err(AppError::Shell(
+                    String::from_utf8_lossy(&out.stderr).trim().to_string(),
+                ))
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let out = Command::new("pkexec")
+                .args(["kill", &format!("-{sig_name}"), &pid.to_string()])
+                .output()
+                .map_err(|e| AppError::Shell(format!("pkexec: {e}")))?;
+            if out.status.success() {
+                Ok(())
+            } else {
+                Err(AppError::Shell(
+                    String::from_utf8_lossy(&out.stderr).trim().to_string(),
+                ))
+            }
         }
     } else {
         let sig = if force { libc::SIGKILL } else { libc::SIGTERM };

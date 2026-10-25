@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const packageDtoSchema = z.object({
   name: z.string(),
   version: z.string(),
-  kind: z.enum(['formula', 'cask']),
+  kind: z.string(),
   outdated: z.boolean(),
   latestVersion: z.string().nullable(),
   pinned: z.boolean(),

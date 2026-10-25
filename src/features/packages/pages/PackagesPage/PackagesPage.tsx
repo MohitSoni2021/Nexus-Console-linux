@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { usePackages, usePackagesOutdated } from '@/features/packages/api/usePackages';
 import { useUpgradePackage, useUpgradeAll } from '@/features/packages/api/packageMutations';
 import { useServices } from '@/shared/brew';
+import { useAppContext } from '@/shared/tauri';
 import { Spinner } from '@/shared/ui/Spinner';
 import { ErrorPanel } from '@/shared/ui/ErrorPanel';
 import {
@@ -49,17 +50,24 @@ export const PackagesPage = () => {
     return packages.filter((p) => {
       if (filter === 'formula' && p.kind !== 'formula') return false;
       if (filter === 'cask' && p.kind !== 'cask') return false;
+      if (filter === 'rpm' && p.kind !== 'rpm') return false;
       if (filter === 'outdated' && !p.outdated) return false;
       return !q || p.name.toLowerCase().includes(q);
     });
   }, [packages, query, filter]);
+
+  const { data: context } = useAppContext();
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-fg">Packages</h1>
-          <p className="text-sm text-fg-muted">Everything Homebrew installed</p>
+          <p className="text-sm text-fg-muted">
+            {context?.platform === 'linux'
+              ? 'Installed RPM packages (DNF)'
+              : 'Everything Homebrew installed'}
+          </p>
         </div>
         <PackagesToolbar
           query={query}

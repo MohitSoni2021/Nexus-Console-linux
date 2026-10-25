@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 
 /// Parse `launchctl list` → formula name → pid, for `homebrew.mxcl.*` labels with

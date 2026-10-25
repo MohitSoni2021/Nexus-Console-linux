@@ -21,9 +21,15 @@ pub fn archive_root() -> Option<PathBuf> {
     home().map(|h| h.join("claude-history-archive"))
 }
 
-// ponytail: stable VSCode only — Insiders/VSCodium variants when someone asks.
 pub fn vscode_user_dir() -> Option<PathBuf> {
-    home().map(|h| h.join("Library/Application Support/Code/User"))
+    #[cfg(target_os = "macos")]
+    {
+        home().map(|h| h.join("Library/Application Support/Code/User"))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        home().map(|h| h.join(".config/Code/User"))
+    }
 }
 
 pub fn vscode_workspace_storage() -> Option<PathBuf> {

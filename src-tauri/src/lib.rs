@@ -3,12 +3,14 @@
 mod brew;
 mod commands;
 mod context;
+pub mod dnf;
 mod doctor;
 mod error;
 mod pty;
 mod quit;
 mod session;
 mod settings;
+pub mod systemd;
 mod tray;
 mod util;
 

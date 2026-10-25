@@ -31,7 +31,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app"],
+    "targets": ["app", "dmg", "rpm", "appimage"],
     "category": "DeveloperTool",
     "copyright": "© 2026 Vidhya Skill School",
     "icon": [

@@ -265,7 +265,12 @@ fn resolve_command(
     match client {
         Some((path, args)) if std::path::Path::new(&path).exists() => Ok((path, args)),
         _ => {
-            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+            let default_shell = if cfg!(target_os = "macos") {
+                "/bin/zsh"
+            } else {
+                "/bin/bash"
+            };
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| default_shell.into());
             Ok((shell, vec!["-l".into()]))
         }
     }
