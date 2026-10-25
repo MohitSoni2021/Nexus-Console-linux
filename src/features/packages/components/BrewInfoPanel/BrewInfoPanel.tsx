@@ -35,7 +35,7 @@ export const BrewInfoPanel = ({ name, onClose }: { name: string; onClose: () => 
               )}
               <dt className="text-fg-subtle">Type</dt>
               <dd className="text-fg">
-                {data.isCask ? 'Cask' : 'Formula'}
+                {data.kind ? data.kind.toUpperCase() : data.isCask ? 'Cask' : 'Formula'}
                 {data.isService ? ' · service' : ''}
               </dd>
             </dl>

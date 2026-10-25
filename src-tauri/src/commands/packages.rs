@@ -27,6 +27,7 @@ pub struct PackageInfo {
     pub dependencies: Vec<String>,
     pub is_service: bool,
     pub is_cask: bool,
+    pub kind: Option<String>,
 }
 
 fn brew_bin<'a>(ctx: &'a State<'_, AppContext>) -> AppResult<&'a str> {
@@ -96,9 +97,15 @@ pub struct OutdatedDto {
 pub async fn list_packages(ctx: State<'_, AppContext>) -> AppResult<Vec<PackageDto>> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(crate::dnf::list_packages_dnf)
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(|| {
+            let mut pkgs = crate::dnf::list_packages_dnf()?;
+            let mut flatpaks = crate::flatpak::list_packages_flatpak().unwrap_or_default();
+            pkgs.append(&mut flatpaks);
+            pkgs.sort_by(|a, b| a.name.cmp(&b.name));
+            Ok(pkgs)
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("package list task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -141,9 +148,14 @@ pub async fn list_packages(ctx: State<'_, AppContext>) -> AppResult<Vec<PackageD
 pub async fn packages_outdated(ctx: State<'_, AppContext>) -> AppResult<Vec<OutdatedDto>> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(crate::dnf::packages_outdated_dnf)
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(|| {
+            let mut outdated = crate::dnf::packages_outdated_dnf()?;
+            let mut flatpaks = crate::flatpak::packages_outdated_flatpak().unwrap_or_default();
+            outdated.append(&mut flatpaks);
+            Ok(outdated)
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("outdated task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -174,9 +186,15 @@ pub async fn package_dependents(
 ) -> AppResult<Vec<String>> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(move || crate::dnf::package_dependents_dnf(&name))
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(move || {
+            if crate::flatpak::is_flatpak(&name) {
+                Ok(Vec::new())
+            } else {
+                crate::dnf::package_dependents_dnf(&name)
+            }
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("dependents task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -205,9 +223,15 @@ pub async fn upgrade_package(
 ) -> AppResult<()> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(move || crate::dnf::upgrade_package_dnf(&name))
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(move || {
+            if crate::flatpak::is_flatpak(&name) {
+                crate::flatpak::upgrade_package_flatpak(&name)
+            } else {
+                crate::dnf::upgrade_package_dnf(&name)
+            }
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("upgrade task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -231,9 +255,16 @@ pub async fn upgrade_package(
 pub async fn upgrade_all(ctx: State<'_, AppContext>, app: AppHandle) -> AppResult<()> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(crate::dnf::upgrade_all_packages_dnf)
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(|| {
+            let dnf_res = crate::dnf::upgrade_all_packages_dnf();
+            let flatpak_res = crate::flatpak::upgrade_all_flatpak();
+            if dnf_res.is_err() && flatpak_res.is_err() {
+                dnf_res?;
+            }
+            Ok(())
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("upgrade all task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -261,10 +292,13 @@ pub async fn update_homebrew(ctx: State<'_, AppContext>, app: AppHandle) -> AppR
             let _ = std::process::Command::new("dnf")
                 .args(["check-update", "-q"])
                 .output();
+            let _ = std::process::Command::new("flatpak")
+                .args(["update", "--appstream"])
+                .output();
             Ok(())
         })
         .await
-        .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        .map_err(|e| AppError::Shell(format!("update task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -287,9 +321,15 @@ pub async fn update_homebrew(ctx: State<'_, AppContext>, app: AppHandle) -> AppR
 pub async fn package_info(name: String, ctx: State<'_, AppContext>) -> AppResult<PackageInfo> {
     #[cfg(target_os = "linux")]
     {
-        tauri::async_runtime::spawn_blocking(move || crate::dnf::package_info_dnf(&name))
-            .await
-            .map_err(|e| AppError::Shell(format!("dnf task failed: {e}")))?
+        tauri::async_runtime::spawn_blocking(move || {
+            if crate::flatpak::is_flatpak(&name) {
+                crate::flatpak::package_info_flatpak(&name)
+            } else {
+                crate::dnf::package_info_dnf(&name)
+            }
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("package info task failed: {e}")))?
     }
     #[cfg(not(target_os = "linux"))]
     {
@@ -328,6 +368,11 @@ pub async fn package_info(name: String, ctx: State<'_, AppContext>) -> AppResult
                 dependencies,
                 is_service: !item["service"].is_null(),
                 is_cask,
+                kind: Some(if is_cask {
+                    "cask".into()
+                } else {
+                    "formula".into()
+                }),
             })
         })
         .await

@@ -28,5 +28,6 @@ export const packageInfoSchema = z.object({
   dependencies: z.array(z.string()),
   isService: z.boolean(),
   isCask: z.boolean(),
+  kind: z.string().optional(),
 });
 export type PackageInfo = z.infer<typeof packageInfoSchema>;

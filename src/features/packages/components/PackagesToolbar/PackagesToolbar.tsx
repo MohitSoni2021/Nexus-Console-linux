@@ -16,6 +16,7 @@ const FILTERS_MAC: SegmentOption<PackageFilter>[] = [
 const FILTERS_LINUX: SegmentOption<PackageFilter>[] = [
   { value: 'all', label: 'All' },
   { value: 'rpm', label: 'RPM' },
+  { value: 'flatpak', label: 'Flatpak' },
   { value: 'outdated', label: 'Outdated' },
 ];
 

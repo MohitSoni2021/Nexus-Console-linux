@@ -2,6 +2,7 @@ import { TriangleAlert } from 'lucide-react';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Button } from '@/shared/ui/Button';
 import { Spinner } from '@/shared/ui/Spinner';
+import { useAppContext } from '@/shared/tauri';
 import { useUninstallFormula } from '@/shared/brew';
 import { useDependents } from '@/features/packages/api/useDependents';
 
@@ -13,6 +14,7 @@ export const UninstallDialog = ({
   name: string | null;
   onClose: () => void;
 }) => {
+  const { data: context } = useAppContext();
   const uninstall = useUninstallFormula();
   const dependents = useDependents(name);
 
@@ -30,6 +32,8 @@ export const UninstallDialog = ({
     }
   };
 
+  const isLinux = context?.platform === 'linux';
+
   return (
     <Dialog
       open
@@ -37,7 +41,7 @@ export const UninstallDialog = ({
         if (!o) onClose();
       }}
       title={`Uninstall ${name}?`}
-      description="Runs brew uninstall."
+      description={isLinux ? 'Runs package uninstallation.' : 'Runs brew uninstall.'}
     >
       {dependents.isPending ? (
         <div className="py-2">
@@ -61,7 +65,9 @@ export const UninstallDialog = ({
           </ul>
         </>
       ) : (
-        <p className="text-sm text-fg-muted">Remove {name} from Homebrew.</p>
+        <p className="text-sm text-fg-muted">
+          {isLinux ? `Remove ${name} from your system.` : `Remove ${name} from Homebrew.`}
+        </p>
       )}
 
       <div className="mt-4 flex justify-end gap-2">

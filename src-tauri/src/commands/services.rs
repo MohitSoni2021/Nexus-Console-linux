@@ -437,20 +437,37 @@ pub async fn search_formulae(query: String, ctx: State<'_, AppContext>) -> AppRe
     if query.is_empty() || query.len() > 64 {
         return Err(AppError::InvalidName("invalid search query".into()));
     }
-    // `brew search` is a slow (cold: multi-second) subprocess. Run it off the
-    // main thread so a sync command can't freeze the UI while it runs.
-    let brew = brew_bin(&ctx)?.to_string();
-    tauri::async_runtime::spawn_blocking(move || {
-        let out = run_brew(&brew, &["search", &query])?;
-        Ok(out
-            .lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty() && !l.starts_with("==>"))
-            .map(String::from)
-            .collect::<Vec<String>>())
-    })
-    .await
-    .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
+    #[cfg(target_os = "linux")]
+    {
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut results = crate::dnf::search_packages_dnf(&query).unwrap_or_default();
+            let flatpaks = crate::flatpak::search_packages_flatpak(&query).unwrap_or_default();
+            results.extend(flatpaks);
+            results.sort_unstable();
+            results.dedup();
+            results.truncate(50);
+            Ok(results)
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("search task failed: {e}")))?
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // `brew search` is a slow (cold: multi-second) subprocess. Run it off the
+        // main thread so a sync command can't freeze the UI while it runs.
+        let brew = brew_bin(&ctx)?.to_string();
+        tauri::async_runtime::spawn_blocking(move || {
+            let out = run_brew(&brew, &["search", &query])?;
+            Ok(out
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty() && !l.starts_with("==>"))
+                .map(String::from)
+                .collect::<Vec<String>>())
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
+    }
 }
 
 /// `brew search <base>` output → the installable candidates for that service:
@@ -509,25 +526,40 @@ pub async fn uninstall_formula(
     ctx: State<'_, AppContext>,
     app: AppHandle,
 ) -> AppResult<()> {
-    validate::validate_formula(&name)?;
-    let bin = brew_bin(&ctx)?.to_string();
-    tauri::async_runtime::spawn_blocking(move || {
-        let lock = app.state::<BrewLock>();
-        let _g = lock
-            .0
-            .lock()
-            .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
-        let mut args = vec!["uninstall"];
-        if ignore_dependents {
-            args.push("--ignore-dependencies");
-        }
-        args.push(&name);
-        run_brew(&bin, &args)?;
-        app.state::<ServicesCache>().invalidate();
-        Ok(())
-    })
-    .await
-    .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
+    #[cfg(target_os = "linux")]
+    {
+        tauri::async_runtime::spawn_blocking(move || {
+            if crate::flatpak::is_flatpak(&name) {
+                crate::flatpak::uninstall_package_flatpak(&name)
+            } else {
+                crate::dnf::uninstall_package_dnf(&name)
+            }
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("uninstall task failed: {e}")))?
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        validate::validate_formula(&name)?;
+        let bin = brew_bin(&ctx)?.to_string();
+        tauri::async_runtime::spawn_blocking(move || {
+            let lock = app.state::<BrewLock>();
+            let _g = lock
+                .0
+                .lock()
+                .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
+            let mut args = vec!["uninstall"];
+            if ignore_dependents {
+                args.push("--ignore-dependencies");
+            }
+            args.push(&name);
+            run_brew(&bin, &args)?;
+            app.state::<ServicesCache>().invalidate();
+            Ok(())
+        })
+        .await
+        .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
+    }
 }
 
 #[cfg(test)]

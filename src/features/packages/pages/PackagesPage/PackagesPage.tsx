@@ -51,6 +51,7 @@ export const PackagesPage = () => {
       if (filter === 'formula' && p.kind !== 'formula') return false;
       if (filter === 'cask' && p.kind !== 'cask') return false;
       if (filter === 'rpm' && p.kind !== 'rpm') return false;
+      if (filter === 'flatpak' && p.kind !== 'flatpak') return false;
       if (filter === 'outdated' && !p.outdated) return false;
       return !q || p.name.toLowerCase().includes(q);
     });
@@ -65,7 +66,7 @@ export const PackagesPage = () => {
           <h1 className="text-lg font-semibold text-fg">Packages</h1>
           <p className="text-sm text-fg-muted">
             {context?.platform === 'linux'
-              ? 'Installed RPM packages (DNF)'
+              ? 'Installed RPM & Flatpak packages'
               : 'Everything Homebrew installed'}
           </p>
         </div>

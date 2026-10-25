@@ -120,6 +120,7 @@ pub fn package_info_dnf(name: &str) -> AppResult<PackageInfo> {
         dependencies: deps,
         is_service: false,
         is_cask: false,
+        kind: Some("rpm".into()),
     })
 }
 

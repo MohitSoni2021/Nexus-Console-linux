@@ -6,6 +6,7 @@ mod context;
 pub mod dnf;
 mod doctor;
 mod error;
+pub mod flatpak;
 mod pty;
 mod quit;
 mod session;
