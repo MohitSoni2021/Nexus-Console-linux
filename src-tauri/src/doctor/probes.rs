@@ -4,7 +4,7 @@
 
 use super::{probe_failed, Finding, Platform, Probe, Scope, Severity, Tag};
 
-const UNIX: &[Platform] = &[Platform::MacOs];
+const UNIX: &[Platform] = &[Platform::MacOs, Platform::Linux];
 
 fn always() -> bool {
     true

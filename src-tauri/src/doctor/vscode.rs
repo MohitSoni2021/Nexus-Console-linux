@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-const MACOS: &[Platform] = &[Platform::MacOs];
+const MACOS: &[Platform] = &[Platform::MacOs, Platform::Linux];
 
 fn available() -> bool {
     paths::vscode_user_dir().is_some_and(|d| d.is_dir())

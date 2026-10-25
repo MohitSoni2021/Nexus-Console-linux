@@ -51,12 +51,15 @@ pub enum Tag {
 pub enum Platform {
     MacOs,
     Windows,
+    Linux,
 }
 
 impl Platform {
     pub fn current() -> Self {
         if cfg!(target_os = "windows") {
             Platform::Windows
+        } else if cfg!(target_os = "linux") {
+            Platform::Linux
         } else {
             Platform::MacOs
         }
