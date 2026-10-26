@@ -4,6 +4,7 @@ import { settingsReducer } from './settingsSlice';
 import { serviceIntentReducer } from './serviceIntentSlice';
 import { terminalsReducer } from './terminalsSlice';
 import { sessionsReducer } from './sessionsSlice';
+import { errorLogsReducer } from './errorLogsSlice';
 
 // Own the root shape here (not app/store) so RootState + typed hooks live in
 // shared/ — nothing imports upward from app/. app/store just wires middleware.
@@ -13,6 +14,7 @@ export const rootReducer = combineReducers({
   serviceIntent: serviceIntentReducer,
   terminals: terminalsReducer,
   sessions: sessionsReducer,
+  errorLogs: errorLogsReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

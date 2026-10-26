@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { MODULES, isModuleAvailable, useClaudeInstalled, type ModuleId } from '@/shared/modules';
+import { useAppContext } from '@/shared/tauri';
+import { getSystemLabel } from '@/shared/lib/platform';
 import { cn } from '@/shared/lib/cn';
 import type { FeaturePickerProps } from './FeaturePicker.types';
 
@@ -17,6 +19,7 @@ const MIN_MESSAGE = 'Keep at least one feature on.';
  * last feature is refused with an inline line instead of silently doing nothing
  * (the reducer refuses it too — this is the explanation, not the guard). */
 export const FeaturePicker = ({ value, onChange }: FeaturePickerProps) => {
+  const { data: context } = useAppContext();
   const claudeInstalled = useClaudeInstalled();
   const [blocked, setBlocked] = useState(false);
 
@@ -86,7 +89,7 @@ export const FeaturePicker = ({ value, onChange }: FeaturePickerProps) => {
                 <span className="border-t border-border pt-2.5 text-xs text-fg-subtle">
                   {available
                     ? (m.background ?? 'Nothing runs in the background.')
-                    : 'Claude Code not found on this Mac.'}
+                    : `Claude Code not found on this ${getSystemLabel(context?.platform)}.`}
                 </span>
               </span>
             </label>

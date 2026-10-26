@@ -6,6 +6,7 @@ pub mod packages;
 pub mod ports;
 pub mod power;
 pub mod services;
+pub mod system_stats;
 pub mod vscode;
 
 use crate::error::{AppError, AppResult};

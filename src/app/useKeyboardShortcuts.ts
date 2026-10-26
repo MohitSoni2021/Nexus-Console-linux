@@ -20,7 +20,8 @@ export function useKeyboardShortcuts(): void {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.metaKey || e.altKey || e.ctrlKey) return;
+      const isModifier = e.metaKey || e.ctrlKey;
+      if (!isModifier || e.altKey) return;
 
       const tabs = tabsRef.current;
       const nth = Number(e.key);

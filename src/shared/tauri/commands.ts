@@ -48,4 +48,5 @@ export const CMD = {
   VSCODE_CLEANUP_ORPHANS: 'vscode_cleanup_orphans',
   VSCODE_VACUUM: 'vscode_vacuum',
   GET_POWER_STATISTICS: 'get_power_statistics',
+  GET_SYSTEM_STATS: 'get_system_stats',
 } as const;

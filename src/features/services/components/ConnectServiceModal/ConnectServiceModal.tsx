@@ -5,6 +5,8 @@ import { addManaged } from '@/shared/state/serviceIntentSlice';
 import { bareFormula, formulaDisplayName } from '@/shared/lib/format';
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue';
 import { useSearchFormulae, useServices } from '@/shared/brew';
+import { useAppContext } from '@/shared/tauri';
+import { getSystemLabel } from '@/shared/lib/platform';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Spinner } from '@/shared/ui/Spinner';
 import { POPULAR_FORMULAE } from './ConnectServiceModal.config';
@@ -13,6 +15,7 @@ import type { ConnectServiceModalProps } from './ConnectServiceModal.types';
 const SEARCH_DEBOUNCE_MS = 250;
 
 export const ConnectServiceModal = ({ open, onOpenChange }: ConnectServiceModalProps) => {
+  const { data: context } = useAppContext();
   const dispatch = useAppDispatch();
   const managed = useAppSelector((s) => s.serviceIntent.managed);
   const [query, setQuery] = useState('');
@@ -98,7 +101,7 @@ export const ConnectServiceModal = ({ open, onOpenChange }: ConnectServiceModalP
             {installed.length > 0 && (
               <>
                 <p className="mb-2 text-xs font-medium text-fg-subtle uppercase">
-                  Installed on this Mac · not in your list
+                  Installed on this {getSystemLabel(context?.platform)} · not in your list
                 </p>
                 <div className="mb-4 flex flex-wrap gap-2">{installed.map(chip)}</div>
               </>

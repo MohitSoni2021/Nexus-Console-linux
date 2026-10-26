@@ -9,6 +9,7 @@ import { loadPersistedSessions } from '@/shared/state/sessionsPersist';
 import { sanitizeModules } from '@/shared/modules';
 import { useAppContext, showMainWindow } from '@/shared/tauri';
 import { SplashScreen } from '@/shared/ui/SplashScreen';
+import { initGlobalErrorListeners } from '@/shared/errors/errorLogger';
 
 // Shown once in an install's lifetime — lazy so it never sits in the initial
 // chunk for everyone who has already chosen.
@@ -51,6 +52,7 @@ export const Bootstrap = ({ children }: PropsWithChildren) => {
   const mountedAt = useRef(Date.now());
 
   useEffect(() => {
+    initGlobalErrorListeners(dispatch);
     void persisted.then(([settings, intent, sessions]) => {
       dispatch(
         hydrateSettings({

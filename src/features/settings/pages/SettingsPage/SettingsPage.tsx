@@ -6,6 +6,8 @@ import { FeaturePicker } from '@/features/settings/components/FeaturePicker';
 import { FontPicker } from '@/features/settings/components/FontPicker';
 import { HomebrewStatusCard } from '@/features/settings/components/HomebrewStatusCard';
 import { ManagedServicesEditor } from '@/features/settings/components/ManagedServicesEditor';
+import { SystemStatsCard } from '@/features/settings/components/SystemStatsCard';
+import { ErrorLogsCard } from '@/features/settings/components/ErrorLogsCard';
 import { THEME_OPTIONS, LAYOUT_OPTIONS } from './SettingsPage.config';
 
 export const SettingsPage = () => {
@@ -19,7 +21,7 @@ export const SettingsPage = () => {
       <header className="border-b border-border px-6 py-4">
         <h1 className="text-lg font-semibold text-fg">Settings</h1>
         <p className="text-sm text-fg-muted">
-          Features, appearance, typography &amp; managed services
+          Features, appearance, hardware diagnostics &amp; error logs
         </p>
       </header>
 
@@ -78,6 +80,10 @@ export const SettingsPage = () => {
           <FontPicker />
 
           <ManagedServicesEditor />
+
+          <SystemStatsCard />
+
+          <ErrorLogsCard />
         </div>
       </div>
     </div>

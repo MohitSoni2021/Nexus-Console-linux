@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Button } from '@/shared/ui/Button';
-import { IpcError } from '@/shared/tauri';
+import { IpcError, useAppContext } from '@/shared/tauri';
+import { getOsDisplayName } from '@/shared/lib/platform';
 import { useKillProcess } from '@/features/ports/api/useKillProcess';
 import type { PortDto } from '@/features/ports/api/ports.schema';
 
@@ -13,6 +14,7 @@ export const KillConfirmDialog = ({
   target: PortDto | null;
   onClose: () => void;
 }) => {
+  const { data: context } = useAppContext();
   const kill = useKillProcess();
   const [needsAdmin, setNeedsAdmin] = useState(false);
 
@@ -50,7 +52,7 @@ export const KillConfirmDialog = ({
           <span>
             {needsAdmin
               ? 'Permission denied — this process needs administrator privileges to kill.'
-              : 'System-owned process. Killing it may destabilize macOS.'}
+              : `System-owned process. Killing it may destabilize ${getOsDisplayName(context?.platform)}.`}
           </span>
         </div>
       )}

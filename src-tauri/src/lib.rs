@@ -118,6 +118,7 @@ pub fn run() {
             commands::packages::package_info,
             commands::packages::update_homebrew,
             commands::fonts::get_system_fonts,
+            commands::system_stats::get_system_stats,
             pty::pty_open,
             pty::pty_write,
             pty::pty_resize,
