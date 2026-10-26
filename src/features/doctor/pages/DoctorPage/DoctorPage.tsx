@@ -106,7 +106,14 @@ export const DoctorPage = () => {
     [findings, effectiveTab],
   );
 
-  const runScan = () => void scan([...DOCTOR_SCOPES]);
+  const runScan = () => {
+    setTab('all');
+    void scan([...DOCTOR_SCOPES]);
+  };
+  const runDeepScan = () => {
+    setTab('all');
+    void deepScan();
+  };
   const heroState = findings.length === 0 && !scanning && !deepScanning && !error;
 
   // Probes can emit several findings (per model, per browser) — the key must
@@ -126,13 +133,14 @@ export const DoctorPage = () => {
   // Built from `rows` so nested children never surface as top-level cards.
   const browserGroups = useMemo(() => {
     if (effectiveTab !== 'browser') return null;
-    const order = ['Chrome', 'Brave', 'Edge', 'Extensions', 'Power & audio'];
+    const order = ['Chrome', 'Chromium', 'Brave', 'Edge', 'Extensions', 'Power & audio'];
     const groups = new Map<string, DoctorFinding[]>();
     for (const f of rows) {
       const g =
         f.probeId === 'browser_extensions'
           ? 'Extensions'
-          : (['Chrome', 'Brave', 'Edge'].find((b) => f.summary.startsWith(b)) ?? 'Power & audio');
+          : (['Chrome', 'Chromium', 'Brave', 'Edge'].find((b) => f.summary.startsWith(b)) ??
+            'Power & audio');
       const list = groups.get(g) ?? [];
       list.push(f);
       groups.set(g, list);
@@ -142,13 +150,18 @@ export const DoctorPage = () => {
       .map((g) => [g, groups.get(g) as DoctorFinding[]] as const);
   }, [rows, effectiveTab]);
 
-  const attention = displayed.filter((f) => f.severity !== 'green').length;
+  const totalAttention = findings.filter((f) => f.severity !== 'green').length;
+  const totalHealthy = findings.length - totalAttention;
+  const tabAttention = displayed.filter((f) => f.severity !== 'green').length;
+  const tabHealthy = displayed.length - tabAttention;
   const subtitle = scanning
     ? 'Scanning…'
     : deepScanning
       ? 'Deep scanning — sweeping node_modules and dev caches…'
       : hasScanned
-        ? `${attention} need${attention === 1 ? 's' : ''} attention · ${displayed.length - attention} healthy`
+        ? effectiveTab === 'all'
+          ? `${totalAttention} need${totalAttention === 1 ? 's' : ''} attention · ${totalHealthy} healthy`
+          : `${tabAttention} need${tabAttention === 1 ? 's' : ''} attention in ${SCOPE_LABELS[effectiveTab]} · ${tabHealthy} healthy`
         : 'Read-only health check';
 
   // One key per visible state — changing it remounts the content wrapper so
@@ -218,7 +231,7 @@ export const DoctorPage = () => {
               <>
                 <Button
                   variant="secondary"
-                  onClick={() => void deepScan()}
+                  onClick={runDeepScan}
                   title="Slow: the full scan plus node_modules and dev caches"
                 >
                   <HardDrive className="h-4 w-4" />
@@ -338,7 +351,9 @@ export const DoctorPage = () => {
                 <Spinner className="h-8 w-8" />
                 <div className="flex flex-col items-center gap-1 text-center">
                   <h3 className="text-sm font-semibold text-fg">Scanning…</h3>
-                  <p className="text-sm text-fg-muted">Running read-only checks across your Mac.</p>
+                  <p className="text-sm text-fg-muted">
+                    Running read-only checks across your system.
+                  </p>
                 </div>
                 <Button variant="dangerOutline" onClick={cancelScan}>
                   <X className="h-4 w-4" />
@@ -355,7 +370,7 @@ export const DoctorPage = () => {
               ) : (
                 // First run: a proper hero that teaches what a scan covers —
                 // never blank tabs.
-                <ScanHero onScan={runScan} onDeepScan={() => void deepScan()} />
+                <ScanHero onScan={runScan} onDeepScan={runDeepScan} />
               )
             ) : (
               <div className="overflow-y-auto">

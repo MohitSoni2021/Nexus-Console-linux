@@ -11,40 +11,69 @@ use super::{probe_failed, Finding, Platform, Probe, Scope, Severity, Tag};
 use std::process::Command;
 
 const MACOS: &[Platform] = &[Platform::MacOs];
+const UNIX: &[Platform] = &[Platform::MacOs, Platform::Linux];
 
 pub struct Browser {
     pub label: &'static str,
-    /// Full-args match marker for ps grouping.
-    marker: &'static str,
-    app: &'static str,
-    /// ~/Library/Caches/<this> — safe to clear when the browser is closed.
-    cache_rel: &'static str,
-    /// ~/Library/Application Support/<this>/Local State — background_mode lives here.
-    local_state_rel: &'static str,
+    /// Full-args match markers for ps grouping.
+    markers: &'static [&'static str],
+    app_mac: &'static str,
+    binaries_linux: &'static [&'static str],
+    cache_mac: &'static str,
+    cache_linux: &'static str,
+    support_mac: &'static str,
+    support_linux: &'static str,
 }
 
-/// Brave/Edge are the same Chromium probes, purely data-driven.
+/// Chrome/Chromium/Brave/Edge are the same Chromium probes, purely data-driven.
 const BROWSERS: &[Browser] = &[
     Browser {
         label: "Chrome",
-        marker: "Google Chrome.app",
-        app: "/Applications/Google Chrome.app",
-        cache_rel: "Google/Chrome",
-        local_state_rel: "Google/Chrome",
+        markers: &["Google Chrome.app", "google-chrome", "/chrome"],
+        app_mac: "/Applications/Google Chrome.app",
+        binaries_linux: &[
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "google-chrome",
+        ],
+        cache_mac: "Google/Chrome",
+        cache_linux: "google-chrome",
+        support_mac: "Google/Chrome",
+        support_linux: "google-chrome",
     },
     Browser {
         label: "Brave",
-        marker: "Brave Browser.app",
-        app: "/Applications/Brave Browser.app",
-        cache_rel: "BraveSoftware/Brave-Browser",
-        local_state_rel: "BraveSoftware/Brave-Browser",
+        markers: &["Brave Browser.app", "brave-browser", "/brave"],
+        app_mac: "/Applications/Brave Browser.app",
+        binaries_linux: &["/usr/bin/brave-browser", "/usr/bin/brave", "brave-browser"],
+        cache_mac: "BraveSoftware/Brave-Browser",
+        cache_linux: "BraveSoftware/Brave-Browser",
+        support_mac: "BraveSoftware/Brave-Browser",
+        support_linux: "BraveSoftware/Brave-Browser",
     },
     Browser {
         label: "Edge",
-        marker: "Microsoft Edge.app",
-        app: "/Applications/Microsoft Edge.app",
-        cache_rel: "Microsoft Edge",
-        local_state_rel: "Microsoft Edge",
+        markers: &["Microsoft Edge.app", "microsoft-edge", "msedge"],
+        app_mac: "/Applications/Microsoft Edge.app",
+        binaries_linux: &[
+            "/usr/bin/microsoft-edge",
+            "/usr/bin/microsoft-edge-stable",
+            "microsoft-edge",
+        ],
+        cache_mac: "Microsoft Edge",
+        cache_linux: "microsoft-edge",
+        support_mac: "Microsoft Edge",
+        support_linux: "microsoft-edge",
+    },
+    Browser {
+        label: "Chromium",
+        markers: &["Chromium.app", "chromium-browser", "/chromium"],
+        app_mac: "/Applications/Chromium.app",
+        binaries_linux: &["/usr/bin/chromium", "/usr/bin/chromium-browser", "chromium"],
+        cache_mac: "Chromium",
+        cache_linux: "chromium",
+        support_mac: "Chromium",
+        support_linux: "chromium",
     },
 ];
 
@@ -54,20 +83,39 @@ fn browser_by_label(label: &str) -> Option<&'static Browser> {
 
 impl Browser {
     fn installed(&self) -> bool {
-        std::path::Path::new(self.app).is_dir()
+        if cfg!(target_os = "macos") {
+            std::path::Path::new(self.app_mac).is_dir()
+        } else {
+            self.binaries_linux
+                .iter()
+                .any(|b| std::path::Path::new(b).exists())
+                || self.support_dir().is_some_and(|p| p.is_dir())
+        }
     }
     fn cache_dir(&self) -> Option<std::path::PathBuf> {
-        super::paths::home().map(|h| h.join("Library/Caches").join(self.cache_rel))
+        let home = super::paths::home()?;
+        if cfg!(target_os = "macos") {
+            Some(home.join("Library/Caches").join(self.cache_mac))
+        } else {
+            Some(home.join(".cache").join(self.cache_linux))
+        }
+    }
+    fn support_dir(&self) -> Option<std::path::PathBuf> {
+        let home = super::paths::home()?;
+        if cfg!(target_os = "macos") {
+            Some(
+                home.join("Library/Application Support")
+                    .join(self.support_mac),
+            )
+        } else {
+            Some(home.join(".config").join(self.support_linux))
+        }
     }
     fn local_state(&self) -> Option<std::path::PathBuf> {
-        super::paths::home().map(|h| {
-            h.join("Library/Application Support")
-                .join(self.local_state_rel)
-                .join("Local State")
-        })
+        self.support_dir().map(|p| p.join("Local State"))
     }
     fn running(&self, ps: &str) -> bool {
-        parse_browser_ps(ps, self.marker).procs > 0
+        parse_browser_ps(ps, self.markers).procs > 0
     }
 }
 
@@ -77,7 +125,7 @@ const EXT_YELLOW_BYTES: u64 = 500 * 1024 * 1024;
 pub const PROCESSES: Probe = Probe {
     id: "browser_processes",
     scope: Scope::Browser,
-    platforms: MACOS,
+    platforms: UNIX,
     available: any_browser_installed,
     run: run_processes,
 };
@@ -105,7 +153,7 @@ pub struct BrowserStats {
 }
 
 /// `ps -Ao rss=,args=` lines → per-browser split. Full-args matching only.
-fn parse_browser_ps(ps: &str, marker: &str) -> BrowserStats {
+fn parse_browser_ps(ps: &str, markers: &[&str]) -> BrowserStats {
     let mut s = BrowserStats::default();
     for line in ps.lines() {
         let line = line.trim_start();
@@ -115,7 +163,7 @@ fn parse_browser_ps(ps: &str, marker: &str) -> BrowserStats {
         let Ok(rss) = rss_str.parse::<u64>() else {
             continue;
         };
-        if !args.contains(marker) {
+        if !markers.iter().any(|m| args.contains(m)) {
             continue;
         }
         s.procs += 1;
@@ -142,7 +190,7 @@ fn run_processes() -> Vec<Finding> {
         if !b.installed() {
             continue;
         }
-        let s = parse_browser_ps(&ps, b.marker);
+        let s = parse_browser_ps(&ps, b.markers);
         if s.procs == 0 {
             out.push(Finding {
                 probe_id: PROCESSES.id,
@@ -278,7 +326,7 @@ const CACHE_MIN_BYTES: u64 = 100 * 1024 * 1024;
 pub const STORAGE: Probe = Probe {
     id: "browser_storage",
     scope: Scope::Browser,
-    platforms: MACOS,
+    platforms: UNIX,
     available: any_browser_installed,
     run: run_storage,
 };
@@ -367,7 +415,7 @@ fn run_storage() -> Vec<Finding> {
 pub const EXTENSIONS: Probe = Probe {
     id: "browser_extensions",
     scope: Scope::Browser,
-    platforms: MACOS,
+    platforms: UNIX,
     available: any_browser_installed,
     run: run_extensions,
 };
@@ -381,14 +429,6 @@ struct BrowserExt {
 }
 
 impl Browser {
-    /// ~/Library/Application Support/<...> — the profile parent dir.
-    fn support_dir(&self) -> Option<std::path::PathBuf> {
-        super::paths::home().map(|h| {
-            h.join("Library/Application Support")
-                .join(self.local_state_rel)
-        })
-    }
-
     /// User-installed extensions across every profile, deduped by id.
     fn extensions(&self) -> Vec<BrowserExt> {
         let Some(base) = self.support_dir() else {
@@ -574,11 +614,24 @@ pub fn manage_extension(spec: &str) -> crate::error::AppResult<String> {
     if !b.extensions().iter().any(|e| e.id == id) {
         return Err(AppError::NotFound(format!("{label} has no extension {id}")));
     }
-    let opened = Command::new("open")
-        .args(["-a", b.app, &format!("chrome://extensions/?id={id}")])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+    let url = format!("chrome://extensions/?id={id}");
+    let opened = if cfg!(target_os = "macos") {
+        Command::new("open")
+            .args(["-a", b.app_mac, &url])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    } else {
+        let bin = b
+            .binaries_linux
+            .iter()
+            .find(|p| std::path::Path::new(p).exists());
+        if let Some(cmd) = bin {
+            Command::new(cmd).arg(&url).spawn().is_ok()
+        } else {
+            Command::new("xdg-open").arg(&url).spawn().is_ok()
+        }
+    };
     if !opened {
         return Err(AppError::Shell(format!("couldn't open {label}")));
     }
@@ -639,7 +692,7 @@ mod tests {
    51200 /Applications/Google Chrome.app/Contents/Frameworks/... --type=gpu-process
    99999 /Applications/Brave Browser.app/Contents/MacOS/Brave Browser
      500 /usr/sbin/somethingelse";
-        let c = parse_browser_ps(ps, "Google Chrome.app");
+        let c = parse_browser_ps(ps, &["Google Chrome.app"]);
         assert_eq!(c.procs, 4);
         assert_eq!(c.total_kb, 512000 + 204800 + 102400 + 51200);
         assert_eq!(
@@ -649,7 +702,7 @@ mod tests {
         assert_eq!(c.ext_kb, 204800);
         assert_eq!(c.renderer_kb, 102400);
         assert_eq!(c.gpu_kb, 51200);
-        let b = parse_browser_ps(ps, "Brave Browser.app");
+        let b = parse_browser_ps(ps, &["Brave Browser.app"]);
         assert_eq!((b.procs, b.total_kb), (1, 99999));
     }
 

@@ -176,4 +176,23 @@ mod tests {
         assert!((Severity::Red as u8) < (Severity::Yellow as u8));
         assert!((Severity::Yellow as u8) < (Severity::Green as u8));
     }
+
+    #[test]
+    fn probes_execute_without_panicking() {
+        let all = [
+            Scope::System,
+            Scope::Claude,
+            Scope::Vscode,
+            Scope::Browser,
+            Scope::Disk,
+            Scope::Startup,
+        ];
+        let probes = probes_for(&all);
+        for p in &probes {
+            let findings = (p.run)();
+            for f in findings {
+                assert!(!f.summary.is_empty());
+            }
+        }
+    }
 }

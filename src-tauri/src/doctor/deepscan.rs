@@ -29,7 +29,7 @@ pub fn is_cancelled() -> bool {
     CANCEL.load(Ordering::Relaxed)
 }
 
-const MACOS: &[Platform] = &[Platform::MacOs];
+const UNIX: &[Platform] = &[Platform::MacOs, Platform::Linux];
 
 fn always() -> bool {
     true
@@ -38,7 +38,7 @@ fn always() -> bool {
 pub const NODE_MODULES_SWEEP: Probe = Probe {
     id: "node_modules_sweep",
     scope: Scope::Disk,
-    platforms: MACOS,
+    platforms: UNIX,
     available: always,
     run: run_node_modules,
 };
@@ -46,7 +46,7 @@ pub const NODE_MODULES_SWEEP: Probe = Probe {
 pub const DEV_CACHES: Probe = Probe {
     id: "dev_caches",
     scope: Scope::Disk,
-    platforms: MACOS,
+    platforms: UNIX,
     available: always,
     run: run_dev_caches,
 };
@@ -296,6 +296,8 @@ const CACHE_MIN_BYTES: u64 = 100 * 1024 * 1024;
 const SAFE_CACHES: &[(&str, &str, &str)] = &[
     ("cache_npm", "npm cache", ".npm/_cacache"),
     ("cache_uv", "uv cache", ".cache/uv"),
+    ("cache_yarn", "Yarn cache", ".cache/yarn"),
+    ("cache_pip", "pip cache", ".cache/pip"),
     (
         "cache_huggingface",
         "Hugging Face cache",
@@ -312,6 +314,20 @@ const SAFE_CACHES: &[(&str, &str, &str)] = &[
 
 fn cache_path(rel: &str) -> Option<PathBuf> {
     paths::home().map(|h| h.join(rel))
+}
+
+fn pnpm_store_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    for rel in &[
+        "Library/pnpm/store",
+        ".local/share/pnpm/store",
+        ".cache/pnpm/store",
+    ] {
+        if let Some(p) = cache_path(rel).filter(|p| p.is_dir()) {
+            roots.push(p);
+        }
+    }
+    roots
 }
 
 fn run_dev_caches() -> Vec<Finding> {
@@ -345,7 +361,8 @@ fn run_dev_caches() -> Vec<Finding> {
     }
     // pnpm: the LIVE store is caution-only (hardlinked, prune-by-hand), but a
     // store version pnpm has moved off is a plain orphan — one-click.
-    if cache_path("Library/pnpm/store").is_some_and(|p| p.is_dir()) {
+    let pnpm_roots = pnpm_store_roots();
+    if !pnpm_roots.is_empty() {
         let scan = scan_pnpm_stores();
         if scan.orphan_bytes >= CACHE_MIN_BYTES {
             out.push(Finding {
@@ -473,7 +490,7 @@ fn scan_pnpm_stores() -> PnpmStores {
         .map(|n| n.to_string_lossy().into_owned());
     let mut orphans = Vec::new();
     let mut orphan_bytes = 0;
-    if let Some(root) = cache_path("Library/pnpm/store") {
+    for root in pnpm_store_roots() {
         if let Ok(rd) = std::fs::read_dir(&root) {
             for entry in rd.filter_map(Result::ok) {
                 let dir = entry.path();
@@ -498,15 +515,17 @@ fn scan_pnpm_stores() -> PnpmStores {
 /// that isn't a direct child of the store root — the same defense-in-depth the
 /// VSCode orphan cleanup uses.
 fn delete_pnpm_orphan_stores() -> AppResult<String> {
-    let root = cache_path("Library/pnpm/store")
-        .ok_or_else(|| AppError::NotFound("HOME not set".into()))?;
+    let roots = pnpm_store_roots();
+    if roots.is_empty() {
+        return Ok("No orphaned pnpm stores.".into());
+    }
     let scan = scan_pnpm_stores();
     if scan.orphans.is_empty() {
         return Ok("No orphaned pnpm stores.".into());
     }
     let (mut removed, mut freed) = (0usize, 0u64);
     for dir in &scan.orphans {
-        if dir.parent() != Some(root.as_path()) {
+        if !roots.iter().any(|r| dir.parent() == Some(r.as_path())) {
             continue;
         }
         let bytes = du_bytes(dir);

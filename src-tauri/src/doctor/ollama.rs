@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 
-const UNIX: &[Platform] = &[Platform::MacOs];
+const UNIX: &[Platform] = &[Platform::MacOs, Platform::Linux];
 const STALE_DAYS: u64 = 90;
 
 pub const OLLAMA_MODELS: Probe = Probe {

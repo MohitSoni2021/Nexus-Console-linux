@@ -7,7 +7,7 @@ const AREAS = [
   {
     icon: Cog,
     label: 'System',
-    desc: 'Low Power Mode, memory pressure, Time Machine',
+    desc: 'CPU load, memory pressure, system resources',
     badge: 'bg-accent-soft text-accent',
   },
   {
@@ -31,7 +31,7 @@ const AREAS = [
   {
     icon: Power,
     label: 'Startup',
-    desc: 'Third-party launch agents',
+    desc: 'Startup applications & background services',
     badge: 'bg-running-soft text-running',
   },
 ];
@@ -50,7 +50,7 @@ export const ScanHero = ({
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
           <Stethoscope className="h-7 w-7 text-accent" />
         </div>
-        <h2 className="text-xl font-semibold text-fg">Check your Mac's health</h2>
+        <h2 className="text-xl font-semibold text-fg">Check your system's health</h2>
         <p className="max-w-md text-sm leading-relaxed text-fg-muted">
           One read-only scan across key areas. Nothing changes without your confirmation.
         </p>
