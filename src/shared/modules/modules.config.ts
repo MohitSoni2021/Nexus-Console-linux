@@ -5,12 +5,13 @@ import {
   Network,
   Package,
   Stethoscope,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from '@/shared/state/uiSlice';
 
-/** The four things this app actually is. Order is nav order. */
-export const MODULE_IDS = ['homebrew', 'ports', 'doctor', 'claude'] as const;
+/** The things this app actually is. Order is nav order. */
+export const MODULE_IDS = ['homebrew', 'ports', 'doctor', 'power', 'claude'] as const;
 export type ModuleId = (typeof MODULE_IDS)[number];
 
 /** What a module needs on this Mac to be offered at all. Only Claude Code
@@ -71,6 +72,14 @@ export const MODULES: ModuleDef[] = [
     nav: [{ tab: 'doctor', label: 'Doctor', icon: Stethoscope }],
     blurb: 'Read-only machine health checks and cleanup.',
     background: 'Optional daily VSCode cleanup while the app sits in the tray.',
+  },
+  {
+    id: 'power',
+    label: 'Power Statistics',
+    icon: Zap,
+    nav: [{ tab: 'power', label: 'Power Statistics', icon: Zap }],
+    blurb: 'Battery health, power supplies, and energy diagnostics.',
+    background: null,
   },
   {
     id: 'claude',

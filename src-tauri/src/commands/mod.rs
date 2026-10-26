@@ -4,6 +4,7 @@ pub mod doctor;
 pub mod fonts;
 pub mod packages;
 pub mod ports;
+pub mod power;
 pub mod services;
 pub mod vscode;
 

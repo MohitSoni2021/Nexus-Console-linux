@@ -47,4 +47,5 @@ export const CMD = {
   CLAUDE_SET_RETENTION: 'claude_set_retention',
   VSCODE_CLEANUP_ORPHANS: 'vscode_cleanup_orphans',
   VSCODE_VACUUM: 'vscode_vacuum',
+  GET_POWER_STATISTICS: 'get_power_statistics',
 } as const;

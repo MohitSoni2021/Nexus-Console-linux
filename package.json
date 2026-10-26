@@ -13,7 +13,7 @@
     "setup:fedora": "sh scripts/setup-fedora.sh",
     "setup:check": "sh scripts/setup.sh --check",
     "start": "tauri dev",
-    "release": "tauri build",
+    "release": "NO_STRIP=true tauri build",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

@@ -109,6 +109,7 @@ pub fn run() {
             commands::services::uninstall_formula,
             commands::ports::list_ports,
             commands::ports::kill_process,
+            commands::power::get_power_statistics,
             commands::packages::list_packages,
             commands::packages::packages_outdated,
             commands::packages::package_dependents,

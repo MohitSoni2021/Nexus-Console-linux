@@ -47,6 +47,14 @@ export function availableModules(
  * onboarding wall for someone mid-flow). */
 export function sanitizeModules(raw: unknown, hasPersistedSettings: boolean): ModuleId[] | null {
   if (!Array.isArray(raw)) return hasPersistedSettings ? [...ALL_MODULES] : null;
-  const known = MODULE_IDS.filter((id) => raw.includes(id));
+  // If user has the original default modules without 'power', include 'power' by default
+  const withPower =
+    raw.includes('homebrew') &&
+    raw.includes('ports') &&
+    raw.includes('doctor') &&
+    !raw.includes('power')
+      ? [...raw, 'power']
+      : raw;
+  const known = MODULE_IDS.filter((id) => withPower.includes(id));
   return known.length > 0 ? known : [...ALL_MODULES];
 }

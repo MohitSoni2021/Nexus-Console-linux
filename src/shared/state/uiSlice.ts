@@ -7,6 +7,7 @@ export const TABS = [
   'packages',
   'ports',
   'sessions',
+  'power',
   'settings',
 ] as const;
 export type Tab = (typeof TABS)[number];
