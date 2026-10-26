@@ -628,9 +628,9 @@ fn get_mount_stats(mountpoint: &str) -> Option<(u64, u64, f64)> {
         return None;
     }
     let stat = unsafe { stat.assume_init() };
-    let bsize = stat.f_frsize as u64;
-    let total = stat.f_blocks as u64 * bsize;
-    let free = stat.f_bavail as u64 * bsize;
+    let bsize = stat.f_frsize;
+    let total = stat.f_blocks * bsize;
+    let free = stat.f_bavail * bsize;
     let used = total.saturating_sub(free);
     let pct = if total > 0 {
         ((used as f64 / total as f64) * 100.0 * 10.0).round() / 10.0
