@@ -34,6 +34,7 @@ const BROWSERS: &[Browser] = &[
         binaries_linux: &[
             "/usr/bin/google-chrome",
             "/usr/bin/google-chrome-stable",
+            "/snap/bin/google-chrome",
             "google-chrome",
         ],
         cache_mac: "Google/Chrome",
@@ -45,7 +46,12 @@ const BROWSERS: &[Browser] = &[
         label: "Brave",
         markers: &["Brave Browser.app", "brave-browser", "/brave"],
         app_mac: "/Applications/Brave Browser.app",
-        binaries_linux: &["/usr/bin/brave-browser", "/usr/bin/brave", "brave-browser"],
+        binaries_linux: &[
+            "/usr/bin/brave-browser",
+            "/usr/bin/brave",
+            "/snap/bin/brave",
+            "brave-browser",
+        ],
         cache_mac: "BraveSoftware/Brave-Browser",
         cache_linux: "BraveSoftware/Brave-Browser",
         support_mac: "BraveSoftware/Brave-Browser",
@@ -58,6 +64,7 @@ const BROWSERS: &[Browser] = &[
         binaries_linux: &[
             "/usr/bin/microsoft-edge",
             "/usr/bin/microsoft-edge-stable",
+            "/snap/bin/microsoft-edge",
             "microsoft-edge",
         ],
         cache_mac: "Microsoft Edge",
@@ -69,7 +76,12 @@ const BROWSERS: &[Browser] = &[
         label: "Chromium",
         markers: &["Chromium.app", "chromium-browser", "/chromium"],
         app_mac: "/Applications/Chromium.app",
-        binaries_linux: &["/usr/bin/chromium", "/usr/bin/chromium-browser", "chromium"],
+        binaries_linux: &[
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/snap/bin/chromium",
+            "chromium",
+        ],
         cache_mac: "Chromium",
         cache_linux: "chromium",
         support_mac: "Chromium",
@@ -108,7 +120,27 @@ impl Browser {
                     .join(self.support_mac),
             )
         } else {
-            Some(home.join(".config").join(self.support_linux))
+            let standard = home.join(".config").join(self.support_linux);
+            if standard.is_dir() {
+                return Some(standard);
+            }
+            // Ubuntu Snap browser profile path fallback
+            let snap_name = match self.label {
+                "Chromium" => "chromium",
+                "Chrome" => "google-chrome",
+                "Brave" => "brave",
+                "Edge" => "edge",
+                _ => self.cache_linux,
+            };
+            let snap_path = home
+                .join("snap")
+                .join(snap_name)
+                .join("current/.config")
+                .join(self.support_linux);
+            if snap_path.is_dir() {
+                return Some(snap_path);
+            }
+            Some(standard)
         }
     }
     fn local_state(&self) -> Option<std::path::PathBuf> {

@@ -25,18 +25,28 @@ pub fn discover() -> AppContext {
     let platform = std::env::consts::OS.to_string();
     let arch = std::env::consts::ARCH.to_string();
 
-    let candidates: &[&str] = if arch == "aarch64" {
-        &["/opt/homebrew", "/usr/local"]
+    let mut candidate_prefixes: Vec<String> = Vec::new();
+    if cfg!(target_os = "linux") {
+        candidate_prefixes.push("/home/linuxbrew/.linuxbrew".to_string());
+        if let Ok(home) = std::env::var("HOME") {
+            candidate_prefixes.push(format!("{home}/.linuxbrew"));
+        }
+        candidate_prefixes.push("/usr/local".to_string());
+        candidate_prefixes.push("/opt/homebrew".to_string());
+    } else if arch == "aarch64" {
+        candidate_prefixes.push("/opt/homebrew".to_string());
+        candidate_prefixes.push("/usr/local".to_string());
     } else {
-        &["/usr/local", "/opt/homebrew"]
+        candidate_prefixes.push("/usr/local".to_string());
+        candidate_prefixes.push("/opt/homebrew".to_string());
     };
 
     let mut brew_prefix = None;
     let mut brew_bin = None;
-    for prefix in candidates {
+    for prefix in &candidate_prefixes {
         let bin = format!("{prefix}/bin/brew");
         if Path::new(&bin).exists() {
-            brew_prefix = Some((*prefix).to_string());
+            brew_prefix = Some(prefix.clone());
             brew_bin = Some(bin);
             break;
         }
@@ -47,6 +57,22 @@ pub fn discover() -> AppContext {
             if Path::new(&bin).exists() {
                 brew_prefix = Some(prefix);
                 brew_bin = Some(bin);
+            }
+        }
+    }
+    if brew_bin.is_none() {
+        if let Ok(output) = Command::new("which").arg("brew").output() {
+            if output.status.success() {
+                let bin = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !bin.is_empty() && Path::new(&bin).exists() {
+                    let prefix = Path::new(&bin)
+                        .parent()
+                        .and_then(|p| p.parent())
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "/usr/local".to_string());
+                    brew_prefix = Some(prefix);
+                    brew_bin = Some(bin);
+                }
             }
         }
     }

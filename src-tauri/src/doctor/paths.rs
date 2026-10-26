@@ -28,7 +28,16 @@ pub fn vscode_user_dir() -> Option<PathBuf> {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        home().map(|h| h.join(".config/Code/User"))
+        let standard = home().map(|h| h.join(".config/Code/User"))?;
+        if standard.is_dir() {
+            return Some(standard);
+        }
+        // Ubuntu Snap VS Code fallback
+        let snap_dir = home().map(|h| h.join("snap/code/common/.config/Code/User"))?;
+        if snap_dir.is_dir() {
+            return Some(snap_dir);
+        }
+        Some(standard)
     }
 }
 
@@ -41,5 +50,14 @@ pub fn vscode_global_state_db() -> Option<PathBuf> {
 }
 
 pub fn vscode_extensions_dir() -> Option<PathBuf> {
-    home().map(|h| h.join(".vscode").join("extensions"))
+    let standard = home().map(|h| h.join(".vscode").join("extensions"))?;
+    if standard.is_dir() {
+        return Some(standard);
+    }
+    // Ubuntu Snap VS Code fallback
+    let snap_dir = home().map(|h| h.join("snap/code/common/.vscode/extensions"))?;
+    if snap_dir.is_dir() {
+        return Some(snap_dir);
+    }
+    Some(standard)
 }

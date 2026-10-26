@@ -28,6 +28,9 @@ pub async fn list_ports(listening_only: bool) -> AppResult<Vec<PortDto>> {
 /// Testable core (blocking). Never call directly from a sync command — it shells out.
 fn collect_ports(listening_only: bool) -> AppResult<Vec<PortDto>> {
     let mut rows = lsof::parse_lsof_fields(&run_lsof(listening_only));
+    if rows.is_empty() && cfg!(target_os = "linux") {
+        rows = run_ss_fallback();
+    }
 
     // Merge IPv4/IPv6 duplicates of the same (pid, port).
     let mut seen = HashSet::new();
@@ -146,6 +149,57 @@ fn run_ps(ids: &[String]) -> String {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default()
+}
+
+fn run_ss_fallback() -> Vec<lsof::LsofRow> {
+    let out = Command::new("ss").args(["-tlpn", "-H"]).output();
+    let Ok(out) = out else {
+        return Vec::new();
+    };
+    if !out.status.success() {
+        return Vec::new();
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut rows = Vec::new();
+    for line in text.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 4 {
+            continue;
+        }
+        let local_addr = parts[3];
+        let Some(port_str) = local_addr.rsplit(':').next() else {
+            continue;
+        };
+        let Ok(port) = port_str.parse::<u16>() else {
+            continue;
+        };
+
+        let mut pid = 0u32;
+        let mut command = String::new();
+        if let Some(user_part) = parts.get(5) {
+            if let Some(pid_idx) = user_part.find("pid=") {
+                let rest = &user_part[pid_idx + 4..];
+                let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                pid = num_str.parse().unwrap_or(0);
+            }
+            if let Some(start) = user_part.find("((\"") {
+                if let Some(end) = user_part[start + 3..].find('"') {
+                    command = user_part[start + 3..start + 3 + end].to_string();
+                }
+            }
+        }
+        if command.is_empty() {
+            command = "listening".to_string();
+        }
+        rows.push(lsof::LsofRow {
+            pid,
+            command,
+            user: "system".to_string(),
+            proto: "TCP".to_string(),
+            port,
+        });
+    }
+    rows
 }
 
 #[cfg(test)]
