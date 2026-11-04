@@ -1,7 +1,7 @@
 /**
- * Nexus Console — Production Site Interactive Engine
- * Handles OS switching, mock application preview, copy-to-clipboard,
- * and live micro-interactions.
+ * Nexus Console — Editorial Paper Edition Interactive Script
+ * Powers the broadsheet layout: OS tab switching, live desktop mockup,
+ * port killer, service controller, and ink copy feedback.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,9 +22,9 @@ function initOsTabs() {
   const osSections = document.querySelectorAll('[data-os-content]');
   const detectedLabel = document.getElementById('detected-os-badge');
 
-  // Detect user OS
+  // Detect user platform
   const ua = navigator.userAgent.toLowerCase();
-  let defaultOs = 'linux'; // Default to Linux per user's Linux release focus
+  let defaultOs = 'linux'; // Default to Linux per user's primary focus
 
   if (ua.includes('mac') || ua.includes('darwin')) {
     defaultOs = 'mac';
@@ -34,9 +34,8 @@ function initOsTabs() {
     defaultOs = 'linux';
   }
 
-  // Update detected badge if present
   if (detectedLabel) {
-    const osNames = { linux: 'Linux', mac: 'macOS', windows: 'Windows' };
+    const osNames = { linux: 'Linux (Fedora/Debian)', mac: 'macOS', windows: 'Windows' };
     detectedLabel.textContent = `Auto-detected: ${osNames[defaultOs]}`;
   }
 
@@ -44,9 +43,13 @@ function initOsTabs() {
     osButtons.forEach((btn) => {
       const isTarget = btn.getAttribute('data-os-target') === targetOs;
       btn.classList.toggle('active', isTarget);
-      btn.classList.toggle('bg-list', isTarget);
-      btn.classList.toggle('text-white', isTarget);
-      btn.classList.toggle('text-fg-subtle', !isTarget);
+      if (isTarget) {
+        btn.classList.add('bg-[#141413]', 'text-white');
+        btn.classList.remove('bg-white', 'text-ink');
+      } else {
+        btn.classList.remove('bg-[#141413]', 'text-white');
+        btn.classList.add('bg-white', 'text-ink');
+      }
       btn.setAttribute('aria-selected', isTarget ? 'true' : 'false');
     });
 
@@ -55,7 +58,6 @@ function initOsTabs() {
       sec.classList.toggle('hidden', !isTarget);
       if (isTarget) {
         sec.classList.remove('hidden');
-        sec.classList.add('animate-fadeIn');
       }
     });
   }
@@ -84,9 +86,10 @@ function initPreviewTabs() {
 
       tabButtons.forEach((b) => {
         const isActive = b === btn;
-        b.classList.toggle('bg-[#242424]', isActive);
+        b.classList.toggle('bg-[#141413]', isActive);
         b.classList.toggle('text-white', isActive);
-        b.classList.toggle('text-fg-subtle', !isActive);
+        b.classList.toggle('bg-white', !isActive);
+        b.classList.toggle('text-ink', !isActive);
       });
 
       previewPanes.forEach((pane) => {
@@ -119,20 +122,20 @@ function initMockServices() {
         actionBtn.setAttribute('data-state', 'stopped');
         actionBtn.textContent = 'Start';
         actionBtn.className =
-          'service-action-btn px-2.5 py-1 text-xs rounded border border-border bg-[#242424] text-fg hover:bg-[#2e2e2e] transition';
-        statusDot.className = 'service-dot w-2 h-2 rounded-full bg-stopped';
+          'service-action-btn px-2.5 py-1 text-xs rounded border border-ink bg-white text-ink hover:bg-[#f2eee3] transition font-bold shadow-[1.5px_1.5px_0px_#141413]';
+        statusDot.className = 'service-dot w-2.5 h-2.5 rounded-full bg-gray-400 border border-ink';
         statusText.textContent = 'Stopped';
-        statusText.className = 'service-status-text text-xs text-fg-subtle';
+        statusText.className = 'service-status-text text-xs text-ink-subtle font-mono';
         showToast(`Stopped ${row.getAttribute('data-mock-service')}`);
       } else {
         // Start service
         actionBtn.setAttribute('data-state', 'running');
         actionBtn.textContent = 'Stop';
         actionBtn.className =
-          'service-action-btn px-2.5 py-1 text-xs rounded border border-border bg-[#242424] text-fg hover:bg-[#2e2e2e] transition';
-        statusDot.className = 'service-dot w-2 h-2 rounded-full bg-running status-dot-pulse';
+          'service-action-btn px-2.5 py-1 text-xs rounded border border-ink bg-white text-ink hover:bg-[#f2eee3] transition font-bold shadow-[1.5px_1.5px_0px_#141413]';
+        statusDot.className = 'service-dot w-2.5 h-2.5 rounded-full bg-[#166534] status-dot-pulse';
         statusText.textContent = 'Running (1s)';
-        statusText.className = 'service-status-text text-xs text-running';
+        statusText.className = 'service-status-text text-xs text-[#166534] font-mono font-bold';
         showToast(`Started ${row.getAttribute('data-mock-service')}`);
       }
       updateActiveServiceCount();
@@ -159,13 +162,13 @@ function initMockPorts() {
   let activePortCount = killButtons.length;
 
   killButtons.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const row = btn.closest('tr');
       const portName = row.getAttribute('data-port-label') || 'Process';
       const pid = row.getAttribute('data-pid') || '';
 
       btn.disabled = true;
-      btn.innerHTML = `<span class="animate-spin inline-block mr-1">⌛</span> Killing...`;
+      btn.innerHTML = `Killing...`;
 
       setTimeout(() => {
         row.classList.add('row-killed');
@@ -174,7 +177,7 @@ function initMockPorts() {
           portCounter.textContent = `${activePortCount} active ports`;
         }
         showToast(`Terminated PID ${pid} (${portName})`);
-      }, 350);
+      }, 250);
     });
   });
 
@@ -208,7 +211,7 @@ function initMockDoctor() {
   if (scanBtn && progressBar) {
     scanBtn.addEventListener('click', () => {
       scanBtn.disabled = true;
-      scanBtn.textContent = 'Scanning system...';
+      scanBtn.textContent = 'Probing storage...';
       progressBar.style.width = '0%';
       progressBar.parentElement.classList.remove('hidden');
 
@@ -223,26 +226,26 @@ function initMockDoctor() {
           showToast('Health diagnostics complete: 0 issues, 1.4 GB reclaimable.');
           if (resultSummary) {
             resultSummary.textContent = 'System Healthy • 1.4 GB reclaimable';
-            resultSummary.className = 'text-xs text-running font-mono';
+            resultSummary.className = 'text-xs text-[#166534] font-mono font-bold';
           }
         }
-      }, 150);
+      }, 140);
     });
   }
 
   if (cleanBtn) {
     cleanBtn.addEventListener('click', () => {
       cleanBtn.disabled = true;
-      cleanBtn.innerHTML = `<span>Cleaning...</span>`;
+      cleanBtn.innerHTML = `<span>Purging...</span>`;
       setTimeout(() => {
         cleanBtn.textContent = 'Cleaned!';
-        cleanBtn.classList.remove('bg-accent');
-        cleanBtn.classList.add('bg-running');
+        cleanBtn.classList.remove('btn-ink-primary');
+        cleanBtn.classList.add('bg-[#166534]', 'text-white');
         showToast('Cleaned 1.4 GB dev cache (VSCode & Claude chat history)');
         if (resultSummary) {
           resultSummary.textContent = 'All caches clean • 0 B reclaimable';
         }
-      }, 600);
+      }, 500);
     });
   }
 }
@@ -260,7 +263,7 @@ function initMockTerminal() {
   const COMMANDS = {
     help: 'Available commands: help, status, brew, rpm, ports, doctor, clear',
     status:
-      'Nexus Console v0.1.0 [Linux x86_64]\nCore: Tauri 2.11 + Rust 1.80\nServices: 4 running, 1 stopped\nDoctor: Healthy (0 errors)\nTelemetry: None (100% offline)',
+      'Nexus Console v0.1.0 [Linux x86_64]\nCore: Tauri 2.11 + Rust 1.80\nServices: 3 running, 1 stopped\nDoctor: Healthy (0 errors)\nTelemetry: None (100% offline broadsheet)',
     rpm: 'RPM Package: Nexus Console-0.1.0-1.x86_64.rpm\nInstall: sudo dnf install ./Nexus\\ Console-0.1.0-1.x86_64.rpm\nSize: 8.9 MB | SHA256: f2b9690e80f5b34e98c1...',
     ports:
       'Listening Ports:\n  :3000   node (PID 48129)\n  :5432   postgres (PID 1092)\n  :6379   redis-server (PID 8312)\n  :8080   caddy (PID 9411)',
@@ -272,8 +275,8 @@ function initMockTerminal() {
   function executeCommand(rawCmd) {
     const cmd = rawCmd.trim().toLowerCase();
     const promptLine = document.createElement('div');
-    promptLine.className = 'text-fg flex gap-2 font-mono text-xs';
-    promptLine.innerHTML = `<span class="text-accent">➜</span> <span class="text-fg-subtle">~</span> <span class="text-white">${escapeHtml(rawCmd)}</span>`;
+    promptLine.className = 'text-[#f4f4f0] flex gap-2 font-mono text-xs';
+    promptLine.innerHTML = `<span class="text-[#f5c544]">➜</span> <span class="text-gray-400">~</span> <span class="text-white">${escapeHtml(rawCmd)}</span>`;
     termOutput.appendChild(promptLine);
 
     if (cmd === 'clear') {
@@ -284,7 +287,7 @@ function initMockTerminal() {
     const response =
       COMMANDS[cmd] || `nexus: command not found: ${escapeHtml(cmd)}. Type 'help' for commands.`;
     const respLine = document.createElement('div');
-    respLine.className = 'text-fg-muted font-mono text-xs whitespace-pre-wrap pl-4 pb-2';
+    respLine.className = 'text-gray-300 font-mono text-xs whitespace-pre-wrap pl-4 pb-2';
     respLine.textContent = response;
     termOutput.appendChild(respLine);
 
@@ -332,7 +335,6 @@ function initCopyButtons() {
       try {
         await navigator.clipboard.writeText(textToCopy);
       } catch (err) {
-        // Fallback for older browsers
         const textarea = document.createElement('textarea');
         textarea.value = textToCopy;
         document.body.appendChild(textarea);
@@ -341,23 +343,17 @@ function initCopyButtons() {
         document.body.removeChild(textarea);
       }
 
-      // Visual feedback
       const originalHtml = btn.innerHTML;
       btn.innerHTML = `
-        <svg class="w-3.5 h-3.5 text-running animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-        </svg>
-        <span class="text-running text-xs font-mono font-medium">Copied!</span>
+        <span class="text-[#166534] font-mono text-xs font-bold">✓ Copied</span>
       `;
-      btn.classList.add('border-running');
 
       showToast(
-        `Copied to clipboard: "${textToCopy.slice(0, 30)}${textToCopy.length > 30 ? '...' : ''}"`,
+        `Copied to clipboard: "${textToCopy.slice(0, 32)}${textToCopy.length > 32 ? '...' : ''}"`,
       );
 
       setTimeout(() => {
         btn.innerHTML = originalHtml;
-        btn.classList.remove('border-running');
       }, 2000);
     });
   });
@@ -373,13 +369,13 @@ function showToast(message) {
     toast = document.createElement('div');
     toast.id = 'toast-notification';
     toast.className =
-      'fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-border bg-[#202020] text-fg text-xs font-mono shadow-2xl transition-all duration-200 opacity-0 translate-y-3 pointer-events-none';
+      'fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded border-2 border-ink bg-white text-ink text-xs font-mono shadow-[4px_4px_0px_#141413] transition-all duration-150 opacity-0 translate-y-3 pointer-events-none';
     document.body.appendChild(toast);
   }
 
   toast.innerHTML = `
-    <span class="w-2 h-2 rounded-full bg-accent animate-ping"></span>
-    <span>${escapeHtml(message)}</span>
+    <span class="w-2.5 h-2.5 rounded-full bg-[#f5c544] border border-ink"></span>
+    <span class="font-bold">${escapeHtml(message)}</span>
   `;
 
   toast.classList.remove('opacity-0', 'translate-y-3', 'pointer-events-none');
@@ -392,7 +388,6 @@ function showToast(message) {
   }, 2600);
 }
 
-// Utility: HTML escape
 function escapeHtml(str) {
   return str.replace(
     /[&<>'"]/g,
