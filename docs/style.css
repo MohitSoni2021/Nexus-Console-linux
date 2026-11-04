@@ -1,0 +1,395 @@
+/* Nexus Console Production Site Stylesheet
+ * Matches native application design tokens & dark canvas theme
+ */
+
+:root {
+  --color-canvas: #181818;
+  --color-canvas-alt: #141414;
+  --color-paper: #202020;
+  --color-list: #242424;
+  --color-list-hover: #2a2a2a;
+  --color-border: #2f2f2f;
+  --color-border-subtle: #262626;
+  --color-border-focus: #3b82f6;
+
+  --color-fg: #e3e6eb;
+  --color-fg-muted: #b9c0c9;
+  --color-fg-subtle: #8b93a1;
+
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-soft: rgba(59, 130, 246, 0.12);
+  --color-accent-border: rgba(59, 130, 246, 0.3);
+
+  --color-running: #10b981;
+  --color-running-soft: #0e2a20;
+  --color-running-glow: rgba(16, 185, 129, 0.35);
+
+  --color-stopped: #94a3b8;
+  --color-stopped-soft: #24272c;
+
+  --color-warn: #f59e0b;
+  --color-warn-soft: #2a2210;
+
+  --color-danger: #ef4444;
+  --color-danger-soft: #2a1414;
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Helvetica, Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Fira Code', monospace;
+
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Base resets & typography */
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* Custom developer thin scrollbars matching Nexus Console desktop app */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-fg-subtle);
+}
+
+/* Subtle architectural grid background with vignette mask */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.radial-vignette {
+  background: radial-gradient(
+    circle 800px at 50% -100px,
+    rgba(59, 130, 246, 0.12),
+    transparent 70%
+  );
+}
+
+.radial-glow-hero {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 600px;
+  background: radial-gradient(
+    ellipse at 50% 20%,
+    rgba(59, 130, 246, 0.14) 0%,
+    rgba(16, 185, 129, 0.05) 45%,
+    transparent 70%
+  );
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glow Card & Glass Panels */
+.glass-nav {
+  background: rgba(24, 24, 24, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-card {
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  transition:
+    border-color 0.2s var(--ease-smooth),
+    transform 0.2s var(--ease-smooth),
+    box-shadow 0.2s var(--ease-smooth);
+}
+
+.console-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+.glow-card-featured {
+  background: linear-gradient(180deg, rgba(36, 36, 36, 0.9) 0%, rgba(32, 32, 32, 0.95) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.2);
+}
+
+.glow-card-featured:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.3);
+}
+
+/* Status dots and badges */
+.status-dot-pulse {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-running);
+}
+
+.status-dot-pulse::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: var(--color-running);
+  opacity: 0.5;
+  animation: radarPing 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes radarPing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* Animations */
+@keyframes floatSubtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float {
+  animation: floatSubtle 6s ease-in-out infinite;
+}
+
+@keyframes terminalBlink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.cursor-blink {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background-color: var(--color-accent);
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: terminalBlink 1.1s infinite;
+}
+
+/* Code Snippet & Interactive Boxes */
+.code-block {
+  font-family: var(--font-mono);
+  background: #111111;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: #d1d5db;
+}
+
+/* Primary Button High-End Styling */
+.btn-primary {
+  background-color: var(--color-accent);
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.18s var(--ease-spring);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 20px -4px rgba(59, 130, 246, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--color-list);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: all 0.18s var(--ease-smooth);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-list-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Tab Active Slide Indicator */
+.tab-btn {
+  position: relative;
+  transition: color 0.2s var(--ease-smooth);
+}
+
+.tab-btn.active {
+  color: #ffffff;
+  background: var(--color-list);
+}
+
+/* App Mockup Windows */
+.mockup-window {
+  background: #181818;
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.traffic-light-red {
+  background-color: #ff5f56;
+}
+.traffic-light-yellow {
+  background-color: #ffbd2e;
+}
+.traffic-light-green {
+  background-color: #27c93f;
+}
+
+/* Kill animation for port simulation */
+.row-killed {
+  animation: fadeOutRow 0.4s var(--ease-smooth) forwards;
+}
+
+@keyframes fadeOutRow {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 50px;
+  }
+  50% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    border: none;
+    display: none;
+  }
+}
+
+/* Tooltip and copy check animation */
+.copied-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-running);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  animation: popIn 0.2s var(--ease-spring);
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Command prompt shine */
+.command-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.825rem;
+  color: var(--color-fg-muted);
+}
+
+/* Gradient text accents */
+.text-gradient {
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom interactive preview transitions */
+.preview-pane {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.preview-pane.active {
+  display: block;
+  opacity: 1;
+  animation: popIn 0.25s var(--ease-spring);
+}
+
+/* Notification toast */
+#toast-notification {
+  transition:
+    transform 0.25s var(--ease-spring),
+    opacity 0.25s ease;
+}
